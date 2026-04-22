@@ -1,0 +1,84 @@
+[project]
+name = "mimeo"
+version = "0.1.0"
+description = "Turn an expert's body of work into a ready-to-use Agent Skill (SKILL.md + references) via Parallel + OpenRouter."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "typer>=0.15.1",
+    "rich>=13.9.4",
+    "httpx>=0.28.1",
+    "pydantic>=2.10.3",
+    "python-slugify>=8.0.4",
+    "python-dotenv>=1.0.1",
+    "openai>=1.58.1",
+    "parallel-web[aiohttp]>=0.4.2",
+    "trafilatura>=2.0.0",
+    "youtube-transcript-api>=0.6.3",
+    "tenacity>=9.0.0",
+    "pyyaml>=6.0.2",
+]
+
+[project.optional-dependencies]
+full = [
+    "yt-dlp>=2024.12.13",
+    "faster-whisper>=1.1.0",
+]
+dev = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.0",
+]
+
+[project.scripts]
+mimeo = "mimeo.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mimeo"]
+
+# Bundle the prompt templates alongside the installed package so
+# ``pip install mimeo`` works. We expose them under ``mimeo/prompts/`` at
+# runtime and resolve them via ``PROMPTS_DIR`` in ``config.py``.
+[tool.hatch.build.targets.wheel.force-include]
+"prompts" = "mimeo/prompts"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/mimeo",
+    "prompts",
+    "README.md",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+# test_live.py is skipped by default (it hits real APIs). Opt in with
+# ``MIMEO_LIVE=1 uv run pytest tests/test_live.py``.
+addopts = "--ignore=tests/test_live.py"
+
+[tool.coverage.run]
+branch = true
+source = ["src/mimeo"]
+
+[tool.coverage.report]
+# Every line is covered; branch coverage is at 99% because a few short-circuit
+# ``else`` arms (e.g. ``if cond: ... else: ...`` where only ``cond`` is
+# exercised) are legitimately unreachable from the tests. Raise this bar
+# rather than silencing meaningful branches.
+fail_under = 99
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.1.0",
+]
