@@ -44,6 +44,12 @@ class Settings:
     # Skip the identity-resolution pre-flight entirely (non-interactive runs
     # where you're confident the name is unambiguous).
     assume_unambiguous: bool = False
+    # Post-cluster: verify every representative_quote actually appears in
+    # one of its listed source texts, stripping the ones that don't.
+    verify_quotes: bool = True
+    # Post-author: run an adversarial-editor LLM pass over the generated
+    # artifact and write the critique to ``_workspace/critique_*.md``.
+    critique: bool = True
 
     @property
     def slug(self) -> str:

@@ -22,8 +22,11 @@ The pipeline:
 0. **Disambiguates** the name with one Parallel Search + one LLM classification call, so "John Smith" doesn't silently blend an economist, a basketball coach, and a novelist into one Frankenstein skill.
 1. **Discovers** sources using the [Parallel](https://parallel.ai) Search API across eight intent buckets (essays, talks/lectures, interviews, podcasts, frameworks, books, papers, letters) so both modern operators *and* historical scientists — whose legacy lives in journals and archival correspondence — are well-covered.
 2. **Fetches** full content — Parallel excerpts/extract for web pages, `youtube-transcript-api` for YouTube captions, and optional local Whisper transcription for podcasts.
-3. **Distills** each source with Claude Opus 4.7 via [OpenRouter](https://openrouter.ai) into a structured extraction (principles, frameworks, mental models, quotes, anti-patterns).
-4. **Synthesizes** everything into a single coherent skill — clustering duplicates, ranking by cross-source frequency, and emitting a skill directory.
+3. **Distills** each source with a frontier model via [OpenRouter](https://openrouter.ai) (default: Google Gemini 3.1 Pro Preview; override with `--model` or `MIMEO_MODEL`) into a structured extraction (principles, frameworks, mental models, quotes, heuristics, anti-patterns). Long sources (books, conference transcripts, PDFs) are chunked on paragraph boundaries, distilled in parallel, and merged so nothing gets silently dropped to a truncation.
+4. **Clusters** across sources — merging duplicates, ranking by cross-source frequency. Long corpora are batched under a prompt-size budget and stitched back together in memory, so `--max-sources 40` on a prolific writer still fits.
+5. **Verifies** every clustered quote against the source text we already fetched. Quotes that don't appear (allowing typographic normalization) are stripped from the corpus and surfaced in a human-readable `_workspace/quote_verification.md` audit trail. Disable with `--no-verify-quotes`.
+6. **Authors** the skill + optional `AGENTS.md`, emitting `heuristics.md` and `anti-patterns.md` reference files alongside the existing principles / frameworks / mental-models / quotes / sources bundle.
+7. **Critiques** the authored artifact with one more adversarial-editor LLM pass, writing a 0-10 score and a categorized issue list to `_workspace/critique_skill.md` (and `critique_agents.md` when relevant). The report is informational — mimeo doesn't auto-rewrite based on it — but gives you an honest second opinion before you ship. Disable with `--no-critique`.
 
 ## Setup
 
@@ -65,6 +68,8 @@ Flags:
 | `--output-dir PATH` | `./output` | Where the generated skill lands. |
 | `--refresh` | off | Ignore cached intermediates in `_workspace/` and re-run everything. |
 | `--concurrency N` | `5` | Concurrent per-source distillation calls. |
+| `--verify-quotes` / `--no-verify-quotes` | on | Check every clustered quote against its source text before authoring; strip ones that don't match. |
+| `--critique` / `--no-critique` | on | Adversarial-editor review of the authored skill, written to `_workspace/critique_*.md`. |
 
 ### Ambiguous names
 
@@ -103,9 +108,12 @@ output/naval-ravikant/
 │   ├── principles.md
 │   ├── frameworks.md
 │   ├── mental-models.md
+│   ├── heuristics.md
+│   ├── anti-patterns.md
 │   ├── quotes.md
 │   └── sources.md
 └── _workspace/         # cached intermediates (identity, discovery, raw, distilled)
+                        # + quote_verification.{json,md} and critique_skill.{json,md}
 ```
 
 With `--format agents`:
@@ -123,13 +131,15 @@ With `--format both` you get both `SKILL.md` + `references/` **and** `AGENTS.md`
 See [the plan](.cursor/plans/) or the source under [`src/mimeo/`](src/mimeo/). Roughly:
 
 ```
-cli -> pipeline -> identity  (Parallel search + LLM: ambiguous? which person?)
-                -> discovery (Parallel search, 8 buckets)
-                -> fetch     (web / youtube / audio)
-                -> distill   (per-source Opus extraction)
-                -> research? (Parallel deep research pseudo-source)
-                -> cluster   (merge + rank cross-source)
-                -> author    (skill | agents | both) + writers
+cli -> pipeline -> identity   (Parallel search + LLM: ambiguous? which person?)
+                -> discovery  (Parallel search, 8 buckets)
+                -> fetch      (web / youtube / audio)
+                -> distill    (per-source extraction, chunk-and-merge on long sources)
+                -> research?  (Parallel deep research pseudo-source)
+                -> cluster    (merge + rank cross-source, batched when corpus is large)
+                -> verify?    (fuzzy-match every quote against its source text)
+                -> author     (skill | agents | both) + writers
+                -> critique?  (adversarial-editor review → _workspace/critique_*.md)
 ```
 
 ## Star History

@@ -206,6 +206,20 @@ class SkillOutput(BaseModel):
     frameworks_md: str
     mental_models_md: str
     quotes_md: str
+    heuristics_md: str = Field(
+        default="",
+        description=(
+            "Markdown for references/heuristics.md: pithy rules of thumb the "
+            "expert applies day-to-day."
+        ),
+    )
+    anti_patterns_md: str = Field(
+        default="",
+        description=(
+            "Markdown for references/anti-patterns.md: things the expert "
+            "explicitly warns against, each with a short 'why it fails'."
+        ),
+    )
 
 
 class AgentsOutput(BaseModel):
@@ -213,4 +227,86 @@ class AgentsOutput(BaseModel):
 
     content: str = Field(
         description="Full AGENTS.md file content, ready to write verbatim."
+    )
+
+
+class QuoteVerification(BaseModel):
+    """Result of checking one clustered quote against its source text(s)."""
+
+    category: Literal[
+        "principles",
+        "frameworks",
+        "mental_models",
+        "heuristics",
+        "signature_quotes",
+        "anti_patterns",
+    ]
+    label: str = Field(description="The clustered item's label (for reporting).")
+    quote: str
+    source_ids: list[str]
+    verified: bool
+    matched_source_id: str | None = Field(
+        default=None,
+        description="The specific source id whose text contained the quote.",
+    )
+    match_ratio: float = Field(
+        default=0.0,
+        description=(
+            "0-1 similarity score for the best candidate window. 1.0 on an "
+            "exact substring match; lower values are fuzzy matches."
+        ),
+    )
+
+
+class VerificationReport(BaseModel):
+    """Aggregate verification result for a corpus."""
+
+    total: int = 0
+    verified: int = 0
+    unverified: list[QuoteVerification] = Field(default_factory=list)
+    # We keep the full verification record for the audit trail; callers that
+    # only want unverified ones filter themselves.
+    all_results: list[QuoteVerification] = Field(default_factory=list)
+
+    @property
+    def pass_rate(self) -> float:
+        if self.total == 0:
+            return 1.0
+        return self.verified / self.total
+
+
+class CritiqueIssue(BaseModel):
+    """A single problem the critique step found with the authored skill."""
+
+    severity: Literal["high", "medium", "low"]
+    category: Literal[
+        "voice",
+        "duplication",
+        "unattributed",
+        "vagueness",
+        "structure",
+        "coverage",
+        "other",
+    ]
+    location: str = Field(
+        description=(
+            "Short pointer to where the issue lives, e.g. 'SKILL.md > Core "
+            "principles' or 'references/frameworks.md'."
+        )
+    )
+    description: str
+    suggestion: str | None = None
+
+
+class CritiqueReport(BaseModel):
+    """LLM critique of an authored skill or AGENTS.md."""
+
+    overall_score: int = Field(
+        description="0-10 holistic score. 10 = ready to ship, 0 = unusable."
+    )
+    summary: str = Field(description="2-4 sentence overall assessment.")
+    issues: list[CritiqueIssue] = Field(default_factory=list)
+    strengths: list[str] = Field(
+        default_factory=list,
+        description="Short bullets naming what the skill got right.",
     )

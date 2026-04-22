@@ -289,6 +289,8 @@ def sample_skill_output() -> SkillOutput:
         frameworks_md="# Frameworks\n\nNone yet.\n",
         mental_models_md="# Mental models\n\nNone yet.\n",
         quotes_md="# Quotes\n\n> Leverage is the key.\n",
+        heuristics_md="# Heuristics\n\n- Play long-term games.\n",
+        anti_patterns_md="# Anti-patterns\n\n## Optimizing for status\n\nStatus games are zero-sum.\n",
     )
 
 

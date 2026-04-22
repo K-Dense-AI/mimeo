@@ -108,6 +108,27 @@ def build(
             help="Ignore cached intermediates and re-run everything.",
         ),
     ] = False,
+    verify_quotes: Annotated[
+        bool,
+        typer.Option(
+            "--verify-quotes/--no-verify-quotes",
+            help=(
+                "After clustering, check every representative quote against "
+                "the fetched source text and strip ones that don't match. "
+                "Defends the 'every quote is verbatim' promise."
+            ),
+        ),
+    ] = True,
+    critique: Annotated[
+        bool,
+        typer.Option(
+            "--critique/--no-critique",
+            help=(
+                "After authoring, run an adversarial-editor LLM pass and "
+                "write a critique report to _workspace/critique_*.md."
+            ),
+        ),
+    ] = True,
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Verbose logging.")
     ] = False,
@@ -127,6 +148,8 @@ def build(
         refresh=refresh,
         expert_description=disambiguator,
         assume_unambiguous=assume_unambiguous,
+        verify_quotes=verify_quotes,
+        critique=critique,
     )
 
     try:

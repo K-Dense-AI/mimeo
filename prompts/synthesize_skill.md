@@ -29,6 +29,13 @@ Return JSON matching the ``SkillOutput`` schema with these fields:
 - ``frameworks_md``: a markdown file for ``references/frameworks.md``.
 - ``mental_models_md``: a markdown file for ``references/mental-models.md``.
 - ``quotes_md``: a markdown file for ``references/quotes.md``.
+- ``heuristics_md``: a markdown file for ``references/heuristics.md``. List
+  the expert's pithy rules of thumb as short H2 sections or a clean bulleted
+  list, each with a 1-2 sentence gloss, a quote (if present), and source ids.
+- ``anti_patterns_md``: a markdown file for ``references/anti-patterns.md``.
+  List things the expert explicitly warns against. Each entry is the
+  anti-pattern statement, a short rationale for why they reject it, a quote
+  when available, and source ids.
 
 ## ``skill_body`` structure
 
@@ -61,7 +68,13 @@ full catalog.}
 
 ## Anti-patterns they push against
 
-{3-6 bullets. Short, direct warnings in the expert's spirit.}
+{3-6 bullets. Short, direct warnings in the expert's spirit. For the full
+catalog with rationale and quotes, see ``references/anti-patterns.md``.}
+
+## Heuristics and rules of thumb
+
+{4-8 bullets. One-liners the expert applies day-to-day. Point to
+``references/heuristics.md`` for the full list with attribution.}
 
 ## How to use this skill in conversation
 
@@ -95,6 +108,14 @@ paragraph. Then use H2 sections per concept with:
 
 ``quotes.md`` is simply a list of the strongest signature quotes as
 blockquotes, each with the source id after them.
+
+``heuristics.md`` is a tight reference: a short intro paragraph followed by
+either H2 sections or a bulleted list of the expert's rules of thumb. Keep
+each entry short; attribution via ``(sources: src_XXX)``.
+
+``anti-patterns.md`` mirrors ``principles.md`` in shape: short intro, then
+H2 sections per anti-pattern with a 1-2 sentence rationale, an optional
+blockquote, and source ids.
 
 ## Source bibliography
 

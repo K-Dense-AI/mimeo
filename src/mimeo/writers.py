@@ -43,6 +43,32 @@ def write_skill(
     (settings.references_dir / "quotes.md").write_text(
         output.quotes_md.strip() + "\n", encoding="utf-8"
     )
+    # heuristics / anti-patterns are optional: models historically produced
+    # empty strings on corpora that didn't surface those categories. We still
+    # write the file so the SKILL.md references resolve, but fall back to a
+    # short placeholder so the reader isn't staring at a blank page.
+    (settings.references_dir / "heuristics.md").write_text(
+        _nonempty_markdown(
+            output.heuristics_md,
+            placeholder=(
+                "# Heuristics\n\n"
+                "No distinctive rules of thumb surfaced from the corpus for "
+                f"{settings.expert_name}.\n"
+            ),
+        ),
+        encoding="utf-8",
+    )
+    (settings.references_dir / "anti-patterns.md").write_text(
+        _nonempty_markdown(
+            output.anti_patterns_md,
+            placeholder=(
+                "# Anti-patterns\n\n"
+                "No explicit anti-patterns surfaced from the corpus for "
+                f"{settings.expert_name}.\n"
+            ),
+        ),
+        encoding="utf-8",
+    )
     (settings.references_dir / "sources.md").write_text(
         _render_sources(sources, expert=settings.expert_name),
         encoding="utf-8",
@@ -94,6 +120,13 @@ def _render_sources_inline(sources: list[Source], *, expert: str) -> str:
         date = f" [{s.publish_date}]" if s.publish_date else ""
         lines.append(f"- **{s.id}**{bucket}{score}: [{title}]({s.url}){date}")
     return "\n".join(lines)
+
+
+def _nonempty_markdown(text: str, *, placeholder: str) -> str:
+    stripped = text.strip()
+    if not stripped:
+        return placeholder
+    return stripped + "\n"
 
 
 def _assemble_skill_md(output: SkillOutput) -> str:

@@ -98,11 +98,45 @@ def test_write_skill(tmp_path: Path) -> None:
     assert "leverage" in fm["description"]
     assert "Thinking like Test Expert" in body
 
-    for ref in ("principles.md", "frameworks.md", "mental-models.md", "quotes.md", "sources.md"):
+    for ref in (
+        "principles.md",
+        "frameworks.md",
+        "mental-models.md",
+        "quotes.md",
+        "heuristics.md",
+        "anti-patterns.md",
+        "sources.md",
+    ):
         assert (skill_dir / "references" / ref).exists(), ref
 
     sources_md = (skill_dir / "references" / "sources.md").read_text()
     assert "src_000" in sources_md and "example.com/a" in sources_md
+
+    # heuristics / anti-patterns default to a graceful placeholder when the
+    # model doesn't surface them; here we passed empty strings via the default.
+    heuristics_md = (skill_dir / "references" / "heuristics.md").read_text()
+    anti_md = (skill_dir / "references" / "anti-patterns.md").read_text()
+    assert "No distinctive rules of thumb" in heuristics_md
+    assert "No explicit anti-patterns" in anti_md
+
+
+def test_write_skill_honors_provided_heuristics_and_anti_patterns(tmp_path: Path) -> None:
+    settings = Settings(expert_name="Test Expert", output_dir=tmp_path)
+    ensure_dirs(settings)
+    output = SkillOutput(
+        skill_name="test-expert",
+        description="Trigger description.",
+        skill_body="# body",
+        principles_md="# p",
+        frameworks_md="# f",
+        mental_models_md="# m",
+        quotes_md="# q",
+        heuristics_md="# Heuristics\n\n- Play long games.\n",
+        anti_patterns_md="# Anti-patterns\n\n## Status games\n\nZero-sum.\n",
+    )
+    skill_dir = write_skill(output=output, sources=[], settings=settings)
+    assert "Play long games" in (skill_dir / "references" / "heuristics.md").read_text()
+    assert "Status games" in (skill_dir / "references" / "anti-patterns.md").read_text()
 
 
 def test_write_agents_appends_sources(tmp_path: Path) -> None:
