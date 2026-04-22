@@ -1,6 +1,6 @@
 [project]
 name = "mimeo"
-version = "0.1.0"
+version = "0.1.1"
 description = "Turn an expert's body of work into a ready-to-use Agent Skill (SKILL.md + references) via Parallel + OpenRouter."
 readme = "README.md"
 requires-python = ">=3.13"
