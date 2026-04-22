@@ -1,6 +1,16 @@
 # mimeo
 
-Turn an expert's body of work (essays, talks, interviews, podcasts) into either:
+> *mim·e·o* — to reproduce, to copy, to imitate.
+
+**Clone an expert's way of thinking into your coding agent.**
+
+Every field has people who've spent decades publicly working out how to think about it — Feynman on physics and first-principles reasoning, Darwin on observation and slow hypothesis-building, Marie Curie on experimental rigor, Turing on computation and formal proof, E. O. Wilson on synthesis across disciplines. Their lectures, papers, letters, and interviews contain genuinely useful mental models, but they're scattered across thousands of pages and hundreds of hours of content no one has time to absorb, let alone apply consistently.
+
+Meanwhile, coding agents are hungry for exactly this kind of guidance. A well-crafted `SKILL.md` or `AGENTS.md` is a lever: it reshapes how an agent reasons, what trade-offs it weighs, and which patterns it reaches for by default. The problem is that writing one by hand — reading everything, synthesizing frameworks, surfacing the non-obvious moves — is itself a multi-week project.
+
+**mimeo automates that project.** Point it at a name and it goes off and reads the internet on your behalf: surfaces the canonical sources, pulls full transcripts and articles, distills each one with a frontier model, clusters the recurring ideas across dozens of sources, and emits a production-ready artifact your agent can load.
+
+The output comes in two flavors:
 
 - an **Agent Skill** — a `SKILL.md` with YAML frontmatter plus a `references/` folder following the [skill-creator](https://github.com/anthropics/skills) anatomy (good for libraries of on-demand skills triggered by description matching), or
 - an **`AGENTS.md`** — a single always-on markdown file read at the start of every agent session in a directory (good for installing an expert's defaults into the agent's everyday behavior).
@@ -10,7 +20,7 @@ Pick one with `--format skill` (default), `--format agents`, or `--format both`.
 The pipeline:
 
 0. **Disambiguates** the name with one Parallel Search + one LLM classification call, so "John Smith" doesn't silently blend an economist, a basketball coach, and a novelist into one Frankenstein skill.
-1. **Discovers** sources using the [Parallel](https://parallel.ai) Search API across several intent buckets (essays, talks, interviews, podcasts, frameworks, books).
+1. **Discovers** sources using the [Parallel](https://parallel.ai) Search API across eight intent buckets (essays, talks/lectures, interviews, podcasts, frameworks, books, papers, letters) so both modern operators *and* historical scientists — whose legacy lives in journals and archival correspondence — are well-covered.
 2. **Fetches** full content — Parallel excerpts/extract for web pages, `youtube-transcript-api` for YouTube captions, and optional local Whisper transcription for podcasts.
 3. **Distills** each source with Claude Opus 4.7 via [OpenRouter](https://openrouter.ai) into a structured extraction (principles, frameworks, mental models, quotes, anti-patterns).
 4. **Synthesizes** everything into a single coherent skill — clustering duplicates, ranking by cross-source frequency, and emitting a skill directory.
@@ -114,7 +124,7 @@ See [the plan](.cursor/plans/) or the source under [`src/mimeo/`](src/mimeo/). R
 
 ```
 cli -> pipeline -> identity  (Parallel search + LLM: ambiguous? which person?)
-                -> discovery (Parallel search, 6 buckets)
+                -> discovery (Parallel search, 8 buckets)
                 -> fetch     (web / youtube / audio)
                 -> distill   (per-source Opus extraction)
                 -> research? (Parallel deep research pseudo-source)
