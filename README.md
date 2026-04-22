@@ -132,16 +132,13 @@ cli -> pipeline -> identity  (Parallel search + LLM: ambiguous? which person?)
                 -> author    (skill | agents | both) + writers
 ```
 
-## Tests
+## Star History
 
-```bash
-# Offline tests (no API calls, always safe)
-uv run pytest --ignore=tests/test_live.py
+<a href="https://www.star-history.com/?repos=K-Dense-AI%2Fmimeo">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=K-Dense-AI/mimeo&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=K-Dense-AI/mimeo&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=K-Dense-AI/mimeo&type=date&legend=top-left" />
+ </picture>
+</a>
 
-# Live smoke tests (hit Parallel + OpenRouter + YouTube - requires .env)
-MIMEO_LIVE=1 uv run pytest tests/test_live.py
-```
-
-## License
-
-MIT.
