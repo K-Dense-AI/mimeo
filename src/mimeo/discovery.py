@@ -51,14 +51,18 @@ BUCKETS: tuple[Bucket, ...] = (
     Bucket(
         name="talks",
         objective_template=(
-            "Find lectures, talks, keynotes, and conference presentations given by "
-            "{expert}{qualifier}. YouTube talks are preferred because they include "
-            "transcripts. Exclude talks by other people who happen to share this name."
+            "Find lectures, talks, keynotes, conference presentations, and "
+            "university course lectures given by {expert}{qualifier}. YouTube "
+            "talks are preferred because they include transcripts. Include "
+            "Nobel lectures, commencement addresses, and Royal Institution / "
+            "academic seminar recordings when relevant. Exclude talks by other "
+            "people who happen to share this name."
         ),
         search_queries_template=(
             '{expert} talk site:youtube.com',
             '{expert} keynote',
             '{expert} lecture',
+            '{expert} "nobel lecture" OR commencement',
         ),
         kind="talk",
     ),
@@ -119,6 +123,44 @@ BUCKETS: tuple[Bucket, ...] = (
             '{expert} author',
         ),
         kind="book",
+    ),
+    Bucket(
+        name="papers",
+        objective_template=(
+            "Find academic papers, journal articles, preprints, technical "
+            "reports, and research publications authored by {expert}{qualifier}. "
+            "Prefer primary sources on arXiv, bioRxiv, PubMed, JSTOR, Google "
+            "Scholar, institutional repositories, or journal publisher sites. "
+            "Include landmark or highly-cited papers and canonical review "
+            "articles. Exclude papers by other people who happen to share this "
+            "name."
+        ),
+        search_queries_template=(
+            '{expert} paper',
+            '{expert} site:arxiv.org OR site:biorxiv.org OR site:pubmed.ncbi.nlm.nih.gov',
+            '{expert} "published in" OR "journal of"',
+            '{expert} scholar citations',
+        ),
+        kind="paper",
+    ),
+    Bucket(
+        name="letters",
+        objective_template=(
+            "Find letters, correspondence, archived notebooks, diary entries, "
+            "and personal writings by {expert}{qualifier} that have been "
+            "published, digitized, or collected. Prefer archival sources "
+            "(university libraries, foundation archives, dedicated "
+            "correspondence projects) and scholarly collected-letters "
+            "editions. Exclude modern social-media posts and content by other "
+            "people who happen to share this name."
+        ),
+        search_queries_template=(
+            '{expert} letters correspondence',
+            '{expert} "collected letters" OR "selected letters"',
+            '{expert} notebooks archive',
+            '{expert} letter to',
+        ),
+        kind="letter",
     ),
 )
 

@@ -7,7 +7,16 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-SourceKind = Literal["essay", "talk", "interview", "podcast", "book", "paper", "other"]
+SourceKind = Literal[
+    "essay",
+    "talk",
+    "interview",
+    "podcast",
+    "book",
+    "paper",
+    "letter",
+    "other",
+]
 SourceMedium = Literal["web", "youtube", "audio", "research-report"]
 
 

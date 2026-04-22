@@ -226,9 +226,33 @@ async def test_rank_and_trim_tops_up_when_llm_underreturns() -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_bucket_set_is_canonical() -> None:
+    """Lock the bucket inventory so renames/removals are deliberate.
+
+    Both modern operators and historical scientists need coverage, so
+    ``papers`` and ``letters`` must stay alongside essays/talks/etc.
+    """
+    names = {b.name for b in BUCKETS}
+    assert names == {
+        "essays",
+        "talks",
+        "interviews",
+        "podcasts",
+        "frameworks",
+        "books",
+        "papers",
+        "letters",
+    }
+    kinds = {b.name: b.kind for b in BUCKETS}
+    assert kinds["papers"] == "paper"
+    assert kinds["letters"] == "letter"
+
+
 @pytest.mark.asyncio
 async def test_discover_sources_full_path(settings: Settings) -> None:
-    # Each bucket gets its own single result.
+    # One result per bucket so we exercise every bucket end-to-end.
+    # Empty buckets are kept explicit (rather than letting them fall through
+    # to the default) so a bucket rename shows up as a test failure.
     by_bucket = {
         "essays": make_search_result(
             [{"url": "https://a.com/1", "title": "Essay 1", "excerpts": ["x" * 100]}]
@@ -246,16 +270,29 @@ async def test_discover_sources_full_path(settings: Settings) -> None:
         "books": make_search_result(
             [{"url": "https://a.com/book", "title": "Book"}]
         ),
+        "papers": make_search_result(
+            [{"url": "https://arxiv.org/abs/1234.5678", "title": "A Paper"}]
+        ),
+        "letters": make_search_result([]),
     }
     parallel = FakeParallelClient(search_by_bucket=by_bucket)
     llm = FakeLLMClient()
-    # 5 total sources, max_sources=5 -> rank_and_trim should early-return and
-    # never need a ranked-sources payload.
+    # 6 total sources across 8 buckets. Bump max_sources so rank_and_trim
+    # early-returns and we don't need to queue a RankedSources payload.
+    from dataclasses import replace
+
     from mimeo.config import ensure_dirs
+
+    settings = replace(settings, max_sources=10)
     ensure_dirs(settings)
 
     sources = await discover_sources(settings=settings, parallel=parallel, llm=llm)
-    assert len(sources) == 5
+    assert len(sources) == 6
+    # Every non-empty bucket contributed, including the new ones.
+    buckets_seen = {s.bucket for s in sources}
+    assert {"essays", "talks", "interviews", "frameworks", "books", "papers"} <= buckets_seen
+    # One source should carry the new paper kind.
+    assert any(s.kind == "paper" for s in sources)
     # Cache file was created.
     ranked_path = (
         settings.workspace_dir
