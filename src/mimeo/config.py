@@ -21,6 +21,7 @@ Mode = Literal["text", "captions", "full"]
 Format = Literal["skill", "agents", "both"]
 
 DEFAULT_MODEL = os.environ.get("MIMEO_MODEL", "google/gemini-3.1-pro-preview")
+DEFAULT_AVATAR_MODEL = os.environ.get("MIMEO_AVATAR_MODEL", "openai/gpt-5.4-image-2")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
@@ -50,6 +51,12 @@ class Settings:
     # Post-author: run an adversarial-editor LLM pass over the generated
     # artifact and write the critique to ``_workspace/critique_*.md``.
     critique: bool = True
+    # Painterly portrait of the expert saved as ``avatar.<ext>`` in the
+    # skill directory. Generated via an OpenRouter image model; failures
+    # are logged and swallowed so a flaky image endpoint never breaks the
+    # main pipeline. On by default; disable with ``--no-avatar``.
+    generate_avatar: bool = True
+    avatar_model: str = DEFAULT_AVATAR_MODEL
 
     @property
     def slug(self) -> str:

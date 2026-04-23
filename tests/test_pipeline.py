@@ -93,6 +93,21 @@ def _build_llm(
     return llm
 
 
+@pytest.fixture(autouse=True)
+def _stub_avatar(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Default every pipeline test to a no-op avatar.
+
+    Avatar generation is on by default in production but hits a real image
+    endpoint. Tests that specifically exercise the avatar path override this
+    with their own monkeypatch.
+    """
+
+    async def _noop(*, settings: Settings, client: Any = None) -> None:
+        return None
+
+    monkeypatch.setattr("mimeo.pipeline.generate_avatar", _noop)
+
+
 @pytest.fixture
 def full_settings(tmp_path: Path) -> Settings:
     # ``assume_unambiguous=True`` bypasses the identity-resolution pre-flight
@@ -434,6 +449,92 @@ async def test_pipeline_with_deep_research_failure_is_tolerated(
     llm = _build_llm(full_settings.expert_name, include_skill=True, include_agents=False)
     out = await run_pipeline(dr_settings, parallel=parallel, llm=llm)
     assert (out / "SKILL.md").exists()
+
+
+@pytest.mark.asyncio
+async def test_pipeline_runs_avatar_stage_when_enabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With ``generate_avatar=True`` the avatar stage is invoked and its path
+    is surfaced in the Done panel."""
+    s = Settings(
+        expert_name="Test Expert",
+        output_dir=tmp_path,
+        max_sources=6,
+        concurrency=3,
+        assume_unambiguous=True,
+        verify_quotes=False,
+        generate_avatar=True,
+    )
+    parallel = FakeParallelClient(search_by_bucket=_six_bucket_search())
+    llm = _build_llm(s.expert_name, include_skill=True, include_agents=False)
+
+    calls: dict[str, Any] = {"n": 0}
+
+    async def _fake_avatar(*, settings: Settings, client: Any = None) -> Path:
+        calls["n"] += 1
+        path = settings.skill_dir / "avatar.png"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"\x89PNG\r\n\x1a\n")
+        return path
+
+    monkeypatch.setattr("mimeo.pipeline.generate_avatar", _fake_avatar)
+
+    out = await run_pipeline(s, parallel=parallel, llm=llm)
+    assert calls["n"] == 1
+    assert (out / "avatar.png").exists()
+
+
+@pytest.mark.asyncio
+async def test_pipeline_avatar_returns_none_is_surfaced(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If the image model declines to produce an image we continue gracefully."""
+    s = Settings(
+        expert_name="Test Expert",
+        output_dir=tmp_path,
+        max_sources=6,
+        concurrency=3,
+        assume_unambiguous=True,
+        verify_quotes=False,
+        generate_avatar=True,
+    )
+    parallel = FakeParallelClient(search_by_bucket=_six_bucket_search())
+    llm = _build_llm(s.expert_name, include_skill=True, include_agents=False)
+
+    async def _fake_avatar(*, settings: Settings, client: Any = None) -> None:
+        return None
+
+    monkeypatch.setattr("mimeo.pipeline.generate_avatar", _fake_avatar)
+    out = await run_pipeline(s, parallel=parallel, llm=llm)
+    assert (out / "SKILL.md").exists()
+    assert not (out / "avatar.png").exists()
+
+
+@pytest.mark.asyncio
+async def test_pipeline_avatar_failure_is_tolerated(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An exception from the avatar step must not fail the whole pipeline."""
+    s = Settings(
+        expert_name="Test Expert",
+        output_dir=tmp_path,
+        max_sources=6,
+        concurrency=3,
+        assume_unambiguous=True,
+        verify_quotes=False,
+        generate_avatar=True,
+    )
+    parallel = FakeParallelClient(search_by_bucket=_six_bucket_search())
+    llm = _build_llm(s.expert_name, include_skill=True, include_agents=False)
+
+    async def _fake_avatar(*, settings: Settings, client: Any = None) -> None:
+        raise RuntimeError("image endpoint down")
+
+    monkeypatch.setattr("mimeo.pipeline.generate_avatar", _fake_avatar)
+    out = await run_pipeline(s, parallel=parallel, llm=llm)
+    assert (out / "SKILL.md").exists()
+    assert not (out / "avatar.png").exists()
 
 
 @pytest.mark.asyncio

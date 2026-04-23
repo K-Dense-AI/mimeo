@@ -17,6 +17,7 @@ wheels/
 # Generated skills + workspace artifacts
 output/
 scripts/
+logs/
 
 # uv
 uv.lock

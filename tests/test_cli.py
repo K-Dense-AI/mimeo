@@ -58,7 +58,28 @@ def test_cli_build_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     assert settings.deep_research is False
     assert settings.refresh is False
     assert settings.concurrency == 5
+    assert settings.generate_avatar is True
     assert "Done" in result.stdout
+
+
+def test_cli_build_avatar_flag(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    captured: dict = {}
+    _patch_run_pipeline(monkeypatch, captured=captured)
+    result = runner.invoke(
+        app,
+        [
+            "Ada Lovelace",
+            "--avatar",
+            "--avatar-model",
+            "openai/gpt-5.4-image-2",
+            "--output-dir",
+            str(tmp_path),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    settings: Settings = captured["settings"]
+    assert settings.generate_avatar is True
+    assert settings.avatar_model == "openai/gpt-5.4-image-2"
 
 
 def test_cli_build_flags(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

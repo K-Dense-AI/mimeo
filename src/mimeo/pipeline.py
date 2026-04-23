@@ -9,6 +9,7 @@ from typing import Callable
 from rich.console import Console
 from rich.panel import Panel
 
+from .avatar import generate_avatar
 from .config import Settings, ensure_dirs
 from .critique import critique_agents, critique_skill
 from .discovery import discover_sources
@@ -64,6 +65,7 @@ async def run_pipeline(
                 f"[bold]Deep research:[/bold] {'yes' if settings.deep_research else 'no'}\n"
                 f"[bold]Verify quotes:[/bold] {'yes' if settings.verify_quotes else 'no'}\n"
                 f"[bold]Critique:[/bold] {'yes' if settings.critique else 'no'}\n"
+                f"[bold]Avatar:[/bold] {'yes (' + settings.avatar_model + ')' if settings.generate_avatar else 'no'}\n"
                 f"[bold]Model:[/bold] {settings.model}\n"
                 f"[bold]Output:[/bold] {settings.skill_dir}"
             ),
@@ -236,6 +238,27 @@ async def run_pipeline(
             console.print(
                 _critique_summary(report, label="AGENTS.md")
             )
+
+    if settings.generate_avatar:
+        console.rule("[bold cyan]Avatar")
+        console.print(
+            f"Generating avatar with [bold]{settings.avatar_model}[/bold]..."
+        )
+        try:
+            avatar_path = await generate_avatar(settings=settings)
+        except Exception as exc:  # noqa: BLE001 - avatar is best-effort
+            logger.warning("Avatar generation failed: %s", exc)
+            console.print(
+                f"[yellow]Avatar generation failed ({exc}); continuing.[/yellow]"
+            )
+        else:
+            if avatar_path is not None:
+                console.print(f"Avatar saved to [bold green]{avatar_path}[/bold green]")
+                written.append(f"avatar at [bold green]{avatar_path}[/bold green]")
+            else:
+                console.print(
+                    "[yellow]Avatar model returned no image; skipping.[/yellow]"
+                )
 
     console.print(
         Panel(

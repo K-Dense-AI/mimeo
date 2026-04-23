@@ -4,6 +4,8 @@
 
 **Clone an expert's way of thinking into your coding agent.**
 
+![mimeo pipeline](docs/mimeo-explainer.png)
+
 Every field has people who've spent decades publicly working out how to think about it — Feynman on physics and first-principles reasoning, Darwin on observation and slow hypothesis-building, Marie Curie on experimental rigor, Turing on computation and formal proof, E. O. Wilson on synthesis across disciplines. Their lectures, papers, letters, and interviews contain genuinely useful mental models, but they're scattered across thousands of pages and hundreds of hours of content no one has time to absorb, let alone apply consistently.
 
 Meanwhile, coding agents are hungry for exactly this kind of guidance. A well-crafted `SKILL.md` or `AGENTS.md` is a lever: it reshapes how an agent reasons, what trade-offs it weighs, and which patterns it reaches for by default. The problem is that writing one by hand — reading everything, synthesizing frameworks, surfacing the non-obvious moves — is itself a multi-week project.
@@ -27,6 +29,7 @@ The pipeline:
 5. **Verifies** every clustered quote against the source text we already fetched. Quotes that don't appear (allowing typographic normalization) are stripped from the corpus and surfaced in a human-readable `_workspace/quote_verification.md` audit trail. Disable with `--no-verify-quotes`.
 6. **Authors** the skill + optional `AGENTS.md`, emitting `heuristics.md` and `anti-patterns.md` reference files alongside the existing principles / frameworks / mental-models / quotes / sources bundle.
 7. **Critiques** the authored artifact with one more adversarial-editor LLM pass, writing a 0-10 score and a categorized issue list to `_workspace/critique_skill.md` (and `critique_agents.md` when relevant). The report is informational — mimeo doesn't auto-rewrite based on it — but gives you an honest second opinion before you ship. Disable with `--no-critique`.
+8. **Illustrates** the expert with a painterly head-and-shoulders portrait via an OpenRouter image model (default: `openai/gpt-5.4-image-2`), saved as `avatar.png` alongside the other outputs. The step is best-effort — image-endpoint failures are logged and swallowed so they never fail the main run. Disable with `--no-avatar` or swap models with `--avatar-model`.
 
 ## Setup
 
@@ -70,6 +73,8 @@ Flags:
 | `--concurrency N` | `5` | Concurrent per-source distillation calls. |
 | `--verify-quotes` / `--no-verify-quotes` | on | Check every clustered quote against its source text before authoring; strip ones that don't match. |
 | `--critique` / `--no-critique` | on | Adversarial-editor review of the authored skill, written to `_workspace/critique_*.md`. |
+| `--avatar` / `--no-avatar` | on | Generate a painterly portrait avatar for the expert via an OpenRouter image model and save it as `avatar.<ext>` alongside the other outputs. |
+| `--avatar-model SLUG` | `openai/gpt-5.4-image-2` | OpenRouter image-capable model slug used for the avatar. |
 
 ### Ambiguous names
 
@@ -112,6 +117,7 @@ output/naval-ravikant/
 │   ├── anti-patterns.md
 │   ├── quotes.md
 │   └── sources.md
+├── avatar.png          # omit with --no-avatar
 └── _workspace/         # cached intermediates (identity, discovery, raw, distilled)
                         # + quote_verification.{json,md} and critique_skill.{json,md}
 ```
@@ -121,10 +127,11 @@ With `--format agents`:
 ```
 output/naval-ravikant/
 ├── AGENTS.md           # self-contained, always-on (no frontmatter)
+├── avatar.png          # omit with --no-avatar
 └── _workspace/
 ```
 
-With `--format both` you get both `SKILL.md` + `references/` **and** `AGENTS.md` in the same directory; they share the cached discovery / fetch / distill / cluster stages, so the second one is cheap.
+With `--format both` you get both `SKILL.md` + `references/` **and** `AGENTS.md` in the same directory; they share the cached discovery / fetch / distill / cluster stages (and a single avatar), so the second format is cheap.
 
 ## Architecture
 
@@ -140,6 +147,7 @@ cli -> pipeline -> identity   (Parallel search + LLM: ambiguous? which person?)
                 -> verify?    (fuzzy-match every quote against its source text)
                 -> author     (skill | agents | both) + writers
                 -> critique?  (adversarial-editor review → _workspace/critique_*.md)
+                -> avatar?    (OpenRouter image model → avatar.png)
 ```
 
 ## Star History

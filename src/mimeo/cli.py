@@ -12,7 +12,14 @@ import typer
 from rich.console import Console
 from rich.logging import RichHandler
 
-from .config import DEFAULT_MODEL, Format, Mode, MissingCredentialError, Settings
+from .config import (
+    DEFAULT_AVATAR_MODEL,
+    DEFAULT_MODEL,
+    Format,
+    Mode,
+    MissingCredentialError,
+    Settings,
+)
 from .identity import AmbiguousNameError
 from .pipeline import run_pipeline
 
@@ -129,6 +136,27 @@ def build(
             ),
         ),
     ] = True,
+    avatar: Annotated[
+        bool,
+        typer.Option(
+            "--avatar/--no-avatar",
+            help=(
+                "Generate a painterly avatar portrait of the expert and "
+                "save it alongside the other outputs as avatar.<ext>. On "
+                "by default; pass --no-avatar to skip the extra image call."
+            ),
+        ),
+    ] = True,
+    avatar_model: Annotated[
+        str,
+        typer.Option(
+            "--avatar-model",
+            help=(
+                "OpenRouter model slug for avatar generation. Must be an "
+                "image-capable model."
+            ),
+        ),
+    ] = DEFAULT_AVATAR_MODEL,
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Verbose logging.")
     ] = False,
@@ -150,6 +178,8 @@ def build(
         assume_unambiguous=assume_unambiguous,
         verify_quotes=verify_quotes,
         critique=critique,
+        generate_avatar=avatar,
+        avatar_model=avatar_model,
     )
 
     try:
