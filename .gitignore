@@ -15,9 +15,9 @@ wheels/
 .env
 
 # Generated skills + workspace artifacts
-output/
 scripts/
 logs/
+*_workspace/
 
 # uv
 uv.lock
