@@ -11,12 +11,16 @@ import pytest
 import yaml
 
 from mimeo.config import (
+    DEFAULT_MODEL,
+    MissingConfigurationError,
     MissingCredentialError,
     PROMPTS_DIR,
     Settings,
     ensure_dirs,
+    require_llm_key,
     require_openrouter_key,
     require_parallel_key,
+    resolve_llm_model,
 )
 from mimeo.discovery import _merge_and_dedupe, _normalize_url
 from mimeo.fetchers.youtube import extract_video_id
@@ -192,6 +196,51 @@ def test_model_cache_id_is_stable_and_model_scoped(tmp_path: Path) -> None:
     assert len(a.model_cache_id) == 8
 
 
+def test_model_cache_id_includes_non_openrouter_provider(tmp_path: Path) -> None:
+    openai = Settings(
+        expert_name="N",
+        output_dir=tmp_path,
+        llm_provider="openai",
+        model="shared-name",
+    )
+    google = Settings(
+        expert_name="N",
+        output_dir=tmp_path,
+        llm_provider="google",
+        model="shared-name",
+    )
+    openrouter = Settings(
+        expert_name="N",
+        output_dir=tmp_path,
+        llm_provider="openrouter",
+        model="shared-name",
+    )
+    assert openai.model_cache_id != google.model_cache_id
+    assert openrouter.model_cache_id == Settings(
+        expert_name="N", output_dir=tmp_path, model="shared-name"
+    ).model_cache_id
+
+
+def test_settings_default_provider_resolution(tmp_path: Path) -> None:
+    s = Settings(expert_name="N", output_dir=tmp_path)
+    assert s.llm_provider == "openrouter"
+    assert s.search_provider == "parallel"
+    assert s.image_provider == "openrouter"
+    assert s.model == DEFAULT_MODEL
+
+
+def test_non_openrouter_requires_model(tmp_path: Path) -> None:
+    with pytest.raises(MissingConfigurationError, match="MIMEO_OPENAI_MODEL"):
+        Settings(expert_name="N", output_dir=tmp_path, llm_provider="openai")
+
+
+def test_provider_specific_model_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("MIMEO_ANTHROPIC_MODEL", "claude-test")
+    s = Settings(expert_name="N", output_dir=tmp_path, llm_provider="anthropic")
+    assert s.model == "claude-test"
+    assert resolve_llm_model("anthropic") == "claude-test"
+
+
 def test_normalize_url() -> None:
     assert _normalize_url("HTTPS://Example.com/a/") == "https://example.com/a"
     assert (
@@ -262,6 +311,26 @@ def test_require_keys_return_value_when_set(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setenv("PARALLEL_API_KEY", "def")
     assert require_openrouter_key() == "abc"
     assert require_parallel_key() == "def"
+
+
+def test_require_llm_key_provider_matrix(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "openai")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "anthropic")
+    monkeypatch.setenv("XAI_API_KEY", "xai")
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini")
+    assert require_llm_key("openai") == "openai"
+    assert require_llm_key("anthropic") == "anthropic"
+    assert require_llm_key("xai") == "xai"
+    assert require_llm_key("google") == "gemini"
+
+
+def test_require_llm_key_google_mentions_both_env_vars(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    with pytest.raises(MissingCredentialError, match="GEMINI_API_KEY or GOOGLE_API_KEY"):
+        require_llm_key("google")
 
 
 def test_expert_context_property(tmp_path: Path) -> None:

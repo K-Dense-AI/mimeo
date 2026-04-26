@@ -141,6 +141,24 @@ def _install_scripted(client: LLMClient, responses: list[Any]) -> _ScriptedCompl
     return scripted
 
 
+class _FakeAnthropicMessages:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    async def create(self, **kwargs: Any) -> Any:
+        self.calls.append(kwargs)
+        return SimpleNamespace(content=[SimpleNamespace(text='{"name": "a", "count": 9}')])
+
+
+class _FakeGoogleModels:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+
+    def generate_content(self, **kwargs: Any) -> Any:
+        self.calls.append(kwargs)
+        return SimpleNamespace(text='{"name": "g", "count": 11}')
+
+
 @pytest.mark.asyncio
 async def test_complete_happy_path() -> None:
     client = LLMClient()
@@ -149,6 +167,58 @@ async def test_complete_happy_path() -> None:
     assert text == "hello"
     assert scripted.calls[0]["messages"][0]["role"] == "system"
     assert scripted.calls[0]["messages"][1]["content"] == "user"
+
+
+@pytest.mark.asyncio
+async def test_openai_provider_uses_openai_compatible_client() -> None:
+    client = LLMClient(provider="openai", model="gpt-test", client=SimpleNamespace())
+    scripted = _install_scripted(client, [_make_completion('{"name": "a", "count": 1}')])
+    out = await client.structured(system=None, user="u", schema=_ToyModel)
+    assert out.count == 1
+    assert scripted.calls[0]["model"] == "gpt-test"
+    assert scripted.calls[0]["response_format"] == {"type": "json_object"}
+
+
+@pytest.mark.asyncio
+async def test_xai_provider_does_not_force_json_mode() -> None:
+    client = LLMClient(provider="xai", model="grok-test", client=SimpleNamespace())
+    scripted = _install_scripted(client, [_make_completion('{"name": "x", "count": 4}')])
+    out = await client.structured(system=None, user="u", schema=_ToyModel)
+    assert out.count == 4
+    assert scripted.calls[0]["model"] == "grok-test"
+    assert "response_format" not in scripted.calls[0]
+
+
+@pytest.mark.asyncio
+async def test_anthropic_provider_uses_native_messages_api() -> None:
+    messages = _FakeAnthropicMessages()
+    client = LLMClient(
+        provider="anthropic",
+        model="claude-test",
+        client=SimpleNamespace(messages=messages),
+    )
+    out = await client.structured(system="sys", user="u", schema=_ToyModel)
+    assert out.count == 9
+    call = messages.calls[0]
+    assert call["model"] == "claude-test"
+    assert call["system"] == "sys"
+    assert call["messages"][0]["role"] == "user"
+
+
+@pytest.mark.asyncio
+async def test_google_provider_passes_response_schema() -> None:
+    models = _FakeGoogleModels()
+    client = LLMClient(
+        provider="google",
+        model="gemini-test",
+        client=SimpleNamespace(models=models),
+    )
+    out = await client.structured(system="sys", user="u", schema=_ToyModel)
+    assert out.count == 11
+    call = models.calls[0]
+    assert call["model"] == "gemini-test"
+    assert call["config"]["response_mime_type"] == "application/json"
+    assert "response_json_schema" in call["config"]
 
 
 @pytest.mark.asyncio

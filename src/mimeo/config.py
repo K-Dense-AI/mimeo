@@ -11,7 +11,7 @@ import hashlib
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TypeAlias, cast
 
 from dotenv import load_dotenv
 
@@ -19,10 +19,32 @@ load_dotenv()
 
 Mode = Literal["text", "captions", "full"]
 Format = Literal["skill", "agents", "both"]
+LLMProvider: TypeAlias = Literal["openrouter", "openai", "anthropic", "xai", "google"]
+SearchProviderName: TypeAlias = Literal["parallel"]
+ImageProviderName: TypeAlias = Literal["openrouter", "none"]
 
-DEFAULT_MODEL = os.environ.get("MIMEO_MODEL", "google/gemini-3.1-pro-preview")
+OPENROUTER_DEFAULT_MODEL = "google/gemini-3.1-pro-preview"
+DEFAULT_LLM_PROVIDER = cast(
+    LLMProvider, os.environ.get("MIMEO_LLM_PROVIDER", "openrouter").lower()
+)
+DEFAULT_SEARCH_PROVIDER = cast(
+    SearchProviderName, os.environ.get("MIMEO_SEARCH_PROVIDER", "parallel").lower()
+)
+DEFAULT_IMAGE_PROVIDER = cast(
+    ImageProviderName, os.environ.get("MIMEO_IMAGE_PROVIDER", "openrouter").lower()
+)
+DEFAULT_MODEL = (
+    os.environ.get("MIMEO_MODEL")
+    or os.environ.get("MIMEO_OPENROUTER_MODEL")
+    or OPENROUTER_DEFAULT_MODEL
+)
 DEFAULT_AVATAR_MODEL = os.environ.get("MIMEO_AVATAR_MODEL", "openai/gpt-5.4-image-2")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+XAI_BASE_URL = "https://api.x.ai/v1"
+
+_LLM_PROVIDERS = frozenset({"openrouter", "openai", "anthropic", "xai", "google"})
+_SEARCH_PROVIDERS = frozenset({"parallel"})
+_IMAGE_PROVIDERS = frozenset({"openrouter", "none"})
 
 
 @dataclass(frozen=True)
@@ -35,7 +57,10 @@ class Settings:
     format: Format = "skill"
     max_sources: int = 25
     deep_research: bool = False
-    model: str = DEFAULT_MODEL
+    model: str | None = None
+    llm_provider: LLMProvider = DEFAULT_LLM_PROVIDER
+    search_provider: SearchProviderName = DEFAULT_SEARCH_PROVIDER
+    image_provider: ImageProviderName = DEFAULT_IMAGE_PROVIDER
     concurrency: int = 5
     refresh: bool = False
     # Optional short qualifier that disambiguates which real person we mean.
@@ -52,11 +77,28 @@ class Settings:
     # artifact and write the critique to ``_workspace/critique_*.md``.
     critique: bool = True
     # Painterly portrait of the expert saved as ``avatar.<ext>`` in the
-    # skill directory. Generated via an OpenRouter image model; failures
+    # skill directory. Generated via the configured image provider; failures
     # are logged and swallowed so a flaky image endpoint never breaks the
     # main pipeline. On by default; disable with ``--no-avatar``.
     generate_avatar: bool = True
     avatar_model: str = DEFAULT_AVATAR_MODEL
+
+    def __post_init__(self) -> None:
+        llm_provider = _validate_choice(
+            "llm_provider", self.llm_provider, _LLM_PROVIDERS
+        )
+        search_provider = _validate_choice(
+            "search_provider", self.search_provider, _SEARCH_PROVIDERS
+        )
+        image_provider = _validate_choice(
+            "image_provider", self.image_provider, _IMAGE_PROVIDERS
+        )
+        object.__setattr__(self, "llm_provider", llm_provider)
+        object.__setattr__(self, "search_provider", search_provider)
+        object.__setattr__(self, "image_provider", image_provider)
+        object.__setattr__(
+            self, "model", resolve_llm_model(cast(LLMProvider, llm_provider), self.model)
+        )
 
     @property
     def slug(self) -> str:
@@ -94,33 +136,70 @@ class Settings:
         """Short hash of the model slug, used to scope LLM caches.
 
         Changing the model should invalidate every LLM-produced artifact
-        (distilled extractions, clustered corpus, authored outputs). We embed
-        this hash in cache filenames so two runs with different models keep
-        independent caches without stepping on each other.
+        (distilled extractions, clustered corpus, authored outputs). OpenRouter
+        keeps its historical model-only cache key for compatibility; direct
+        providers include ``provider:model`` so same-named model aliases do not
+        collide across providers.
         """
-        return hashlib.sha1(self.model.encode("utf-8")).hexdigest()[:8]
+        material = (
+            self.model
+            if self.llm_provider == "openrouter"
+            else f"{self.llm_provider}:{self.model}"
+        )
+        return hashlib.sha1(str(material).encode("utf-8")).hexdigest()[:8]
 
 
-class MissingCredentialError(RuntimeError):
+class MissingConfigurationError(RuntimeError):
+    """Raised when required runtime configuration is absent or invalid."""
+
+
+class MissingCredentialError(MissingConfigurationError):
     """Raised when a required API key is not in the environment."""
 
 
+def resolve_llm_model(provider: LLMProvider, model: str | None = None) -> str:
+    """Resolve the model for ``provider`` from explicit value or environment."""
+    if model:
+        return model
+    provider_env = f"MIMEO_{provider.upper()}_MODEL"
+    if provider_model := os.environ.get(provider_env):
+        return provider_model
+    if generic_model := os.environ.get("MIMEO_MODEL"):
+        return generic_model
+    if provider == "openrouter":
+        return OPENROUTER_DEFAULT_MODEL
+    raise MissingConfigurationError(
+        f"No model configured for LLM provider '{provider}'. Set --model, "
+        f"MIMEO_MODEL, or {provider_env}."
+    )
+
+
+def require_llm_key(provider: LLMProvider) -> str:
+    if provider == "openrouter":
+        return require_openrouter_key()
+    if provider == "openai":
+        return _require_env("OPENAI_API_KEY")
+    if provider == "anthropic":
+        return _require_env("ANTHROPIC_API_KEY")
+    if provider == "xai":
+        return _require_env("XAI_API_KEY")
+    if provider == "google":
+        key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if not key:
+            raise MissingCredentialError(
+                "GEMINI_API_KEY or GOOGLE_API_KEY is not set. Copy .env.example "
+                "to .env and fill in one of them."
+            )
+        return key
+    raise MissingConfigurationError(f"Unsupported LLM provider: {provider}")
+
+
 def require_openrouter_key() -> str:
-    key = os.environ.get("OPENROUTER_API_KEY")
-    if not key:
-        raise MissingCredentialError(
-            "OPENROUTER_API_KEY is not set. Copy .env.example to .env and fill it in."
-        )
-    return key
+    return _require_env("OPENROUTER_API_KEY")
 
 
 def require_parallel_key() -> str:
-    key = os.environ.get("PARALLEL_API_KEY")
-    if not key:
-        raise MissingCredentialError(
-            "PARALLEL_API_KEY is not set. Copy .env.example to .env and fill it in."
-        )
-    return key
+    return _require_env("PARALLEL_API_KEY")
 
 
 def openrouter_default_headers() -> dict[str, str]:
@@ -131,6 +210,25 @@ def openrouter_default_headers() -> dict[str, str]:
     if title := os.environ.get("OPENROUTER_APP_NAME"):
         headers["X-Title"] = title
     return headers
+
+
+def _require_env(name: str) -> str:
+    key = os.environ.get(name)
+    if not key:
+        raise MissingCredentialError(
+            f"{name} is not set. Copy .env.example to .env and fill it in."
+        )
+    return key
+
+
+def _validate_choice(name: str, value: str, allowed: frozenset[str]) -> str:
+    lowered = value.lower()
+    if lowered not in allowed:
+        choices = ", ".join(sorted(allowed))
+        raise MissingConfigurationError(
+            f"Unsupported {name} '{value}'. Expected one of: {choices}."
+        )
+    return lowered
 
 
 def ensure_dirs(settings: Settings) -> None:

@@ -15,8 +15,8 @@ import logging
 
 import trafilatura
 
-from ..parallel_client import ParallelClient
 from ..schemas import FetchedContent, Source
+from ..search import SearchProvider
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ _TARGET_CHARS = 50_000
 _TRAFILATURA_TIMEOUT_S = 30.0
 
 
-async def fetch_web(source: Source, parallel: ParallelClient) -> FetchedContent:
+async def fetch_web(source: Source, parallel: SearchProvider) -> FetchedContent:
     joined_excerpts = "\n\n".join(e for e in source.excerpts if e)
     if len(joined_excerpts) >= _MIN_CHARS:
         return FetchedContent(

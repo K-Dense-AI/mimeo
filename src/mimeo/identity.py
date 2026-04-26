@@ -27,8 +27,8 @@ from rich.console import Console
 
 from .config import Settings
 from .llm import LLMClient
-from .parallel_client import ParallelClient
 from .schemas import ExpertCandidate, IdentityResolution
+from .search import SearchProvider
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class AmbiguousNameError(RuntimeError):
 async def resolve_identity(
     *,
     settings: Settings,
-    parallel: ParallelClient,
+    parallel: SearchProvider,
     llm: LLMClient,
     console: Console | None = None,
 ) -> Settings:
@@ -181,7 +181,7 @@ def _prompt_choice(
 async def _classify(
     *,
     settings: Settings,
-    parallel: ParallelClient,
+    parallel: SearchProvider,
     llm: LLMClient,
 ) -> IdentityResolution:
     """Gather biographical evidence and ask the LLM to classify ambiguity."""

@@ -17,9 +17,9 @@ from .distill import distill_all
 from .fetchers import fetch_all
 from .identity import resolve_identity
 from .llm import LLMClient
-from .parallel_client import ParallelClient
 from .research import deep_research
 from .schemas import Extraction, FetchedContent, Source
+from .search import SearchProvider, create_search_provider
 from .synthesize import author_agents, author_skill, cluster_corpus
 from .verify import verify_quotes
 from .writers import write_agents, write_skill
@@ -32,14 +32,16 @@ async def run_pipeline(
     *,
     console: Console | None = None,
     on_stage: Callable[[str, str], None] | None = None,
-    parallel: ParallelClient | None = None,
+    search: SearchProvider | None = None,
+    parallel: SearchProvider | None = None,
     llm: LLMClient | None = None,
 ) -> Path:
     """Run the whole pipeline and return the path to the generated skill.
 
-    ``parallel`` and ``llm`` are injectable so tests can pass fakes. In real
-    use both default to freshly constructed clients that read their API keys
-    from the environment.
+    ``search``/``parallel`` and ``llm`` are injectable so tests can pass
+    fakes. ``parallel`` is kept as a compatibility alias for older tests and
+    callers. In real use both default to freshly constructed provider clients
+    that read their API keys from the environment.
     """
 
     console = console or Console()
@@ -63,6 +65,9 @@ async def run_pipeline(
                 f"[bold]Mode:[/bold] {settings.mode}\n"
                 f"[bold]Max sources:[/bold] {settings.max_sources}\n"
                 f"[bold]Deep research:[/bold] {'yes' if settings.deep_research else 'no'}\n"
+                f"[bold]LLM provider:[/bold] {settings.llm_provider}\n"
+                f"[bold]Search provider:[/bold] {settings.search_provider}\n"
+                f"[bold]Image provider:[/bold] {settings.image_provider}\n"
                 f"[bold]Verify quotes:[/bold] {'yes' if settings.verify_quotes else 'no'}\n"
                 f"[bold]Critique:[/bold] {'yes' if settings.critique else 'no'}\n"
                 f"[bold]Avatar:[/bold] {'yes (' + settings.avatar_model + ')' if settings.generate_avatar else 'no'}\n"
@@ -74,16 +79,17 @@ async def run_pipeline(
         )
     )
 
-    if parallel is None:
-        parallel = ParallelClient()
+    search_provider = search or parallel
+    if search_provider is None:
+        search_provider = create_search_provider(settings)
     if llm is None:
-        llm = LLMClient(model=settings.model)
+        llm = LLMClient(model=settings.model, provider=settings.llm_provider)
 
     # Stage 0: disambiguate the name before spending money on discovery.
     # Cheap (one search + one LLM call) and short-circuits with an error
     # instead of silently blending two different people's work.
     settings = await resolve_identity(
-        settings=settings, parallel=parallel, llm=llm, console=console
+        settings=settings, parallel=search_provider, llm=llm, console=console
     )
 
     write_skill_flag = settings.format in ("skill", "both")
@@ -104,7 +110,7 @@ async def run_pipeline(
         "Searching across essays, talks, interviews, podcasts, frameworks, books...",
     )
     sources: list[Source] = await discover_sources(
-        settings=settings, parallel=parallel, llm=llm
+        settings=settings, parallel=search_provider, llm=llm
     )
     console.print(f"Selected [bold]{len(sources)}[/bold] sources.")
     if not sources:
@@ -112,7 +118,7 @@ async def run_pipeline(
 
     stage(f"2/{total_stages} Fetch", "Fetching full content for each source...")
     fetched: list[FetchedContent] = await fetch_all(
-        sources, settings=settings, parallel=parallel
+        sources, settings=settings, parallel=search_provider
     )
     console.print(
         f"Fetched content for [bold]{len(fetched)}[/bold] / {len(sources)} sources "
@@ -124,7 +130,7 @@ async def run_pipeline(
             f"2.5/{total_stages} Deep research",
             "Running Parallel Task API pro-fast (this can take a few minutes)...",
         )
-        pair = await deep_research(settings=settings, parallel=parallel)
+        pair = await deep_research(settings=settings, parallel=search_provider)
         if pair:
             research_source, research_content = pair
             sources.append(research_source)
