@@ -22,7 +22,7 @@ from parallel import (
     AsyncParallel,
     RateLimitError,
 )
-from parallel.types import ExtractResponse, SearchResult, TaskRun, TaskRunResult
+from parallel.types import TaskRun, TaskRunResult
 from tenacity import (
     AsyncRetrying,
     stop_after_attempt,
@@ -30,6 +30,12 @@ from tenacity import (
 )
 
 from .config import require_parallel_key
+from .search import (
+    ExtractResponseData,
+    SearchResponse,
+    normalize_extract_response,
+    normalize_search_response,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +78,7 @@ class ParallelClient:
         search_queries: list[str] | None = None,
         max_chars_total: int = 30_000,
         mode: str = "advanced",
-    ) -> SearchResult:
+    ) -> SearchResponse:
         """Run one Search API call.
 
         ``objective`` is a natural-language description of what we want.
@@ -81,12 +87,13 @@ class ParallelClient:
         queries = search_queries or [objective]
         async for attempt in _retryer():
             with attempt:
-                return await self._client.search(
+                response = await self._client.search(
                     objective=objective,
                     search_queries=queries,
                     max_chars_total=max_chars_total,
                     mode=mode,  # type: ignore[arg-type]
                 )
+                return normalize_search_response(response)
         raise RuntimeError("unreachable")  # pragma: no cover - tenacity reraises
 
     async def extract(
@@ -95,15 +102,16 @@ class ParallelClient:
         urls: list[str],
         objective: str | None = None,
         max_chars_total: int = 20_000,
-    ) -> ExtractResponse:
+    ) -> ExtractResponseData:
         """Get LLM-optimized full content for specific URLs."""
         async for attempt in _retryer():
             with attempt:
-                return await self._client.extract(
+                response = await self._client.extract(
                     urls=urls,
                     objective=objective,
                     max_chars_total=max_chars_total,
                 )
+                return normalize_extract_response(response)
         raise RuntimeError("unreachable")  # pragma: no cover - tenacity reraises
 
     async def deep_research(

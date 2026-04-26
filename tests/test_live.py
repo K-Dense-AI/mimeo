@@ -36,10 +36,30 @@ async def test_parallel_search() -> None:
     assert first.title or first.excerpts
 
 
+LLM_PROVIDER_CASES = [
+    ("openrouter", None, ("OPENROUTER_API_KEY",)),
+    ("openai", "MIMEO_OPENAI_MODEL", ("OPENAI_API_KEY",)),
+    ("anthropic", "MIMEO_ANTHROPIC_MODEL", ("ANTHROPIC_API_KEY",)),
+    ("xai", "MIMEO_XAI_MODEL", ("XAI_API_KEY",)),
+    ("google", "MIMEO_GOOGLE_MODEL", ("GEMINI_API_KEY", "GOOGLE_API_KEY")),
+]
+
+
 @pytest.mark.asyncio
-async def test_openrouter_structured() -> None:
-    """OpenRouter returns JSON that validates against a pydantic schema."""
-    llm = LLMClient()
+@pytest.mark.parametrize("provider, model_env, key_envs", LLM_PROVIDER_CASES)
+async def test_llm_provider_structured(
+    provider: str,
+    model_env: str | None,
+    key_envs: tuple[str, ...],
+) -> None:
+    """Selected LLM providers return JSON that validates against a pydantic schema."""
+    if not any(os.environ.get(name) for name in key_envs):
+        pytest.skip(f"{' or '.join(key_envs)} not set")
+    model = os.environ.get(model_env) if model_env else None
+    if provider != "openrouter" and not model:
+        pytest.skip(f"{model_env} not set")
+
+    llm = LLMClient(provider=provider, model=model)  # type: ignore[arg-type]
     item = await llm.structured(
         system="You extract structured data.",
         user=(

@@ -561,13 +561,13 @@ async def test_pipeline_constructs_default_clients_when_omitted(
         construct_log.append("parallel")
         self._client = None
 
-    def _fake_llm_init(self, model: str = "x"):  # type: ignore[no-redef]
+    def _fake_llm_init(self, model: str = "x", **_: object):  # type: ignore[no-redef]
         construct_log.append("llm")
         self.model = model
         self._client = None
 
     monkeypatch.setattr(
-        "mimeo.pipeline.ParallelClient.__init__", _fake_parallel_init
+        "mimeo.parallel_client.ParallelClient.__init__", _fake_parallel_init
     )
     monkeypatch.setattr("mimeo.pipeline.LLMClient.__init__", _fake_llm_init)
 

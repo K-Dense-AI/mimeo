@@ -16,8 +16,8 @@ from pathlib import Path
 
 from .config import Settings
 from .llm import LLMClient
-from .parallel_client import ParallelClient
 from .schemas import RankedSources, Source, SourceKind
+from .search import SearchProvider
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +168,7 @@ BUCKETS: tuple[Bucket, ...] = (
 async def discover_sources(
     *,
     settings: Settings,
-    parallel: ParallelClient,
+    parallel: SearchProvider,
     llm: LLMClient,
 ) -> list[Source]:
     """Run the full discovery stage."""
@@ -217,7 +217,7 @@ async def _run_all_buckets(
     *,
     expert: str,
     expert_description: str | None,
-    parallel: ParallelClient,
+    parallel: SearchProvider,
     workspace: Path,
     refresh: bool,
 ) -> list[Source]:
@@ -248,7 +248,7 @@ async def _run_bucket(
     expert: str,
     expert_description: str | None,
     bucket: Bucket,
-    parallel: ParallelClient,
+    parallel: SearchProvider,
     workspace: Path,
     refresh: bool,
 ) -> list[Source]:

@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 
 from mimeo import cli as cli_module
 from mimeo.cli import app, main
-from mimeo.config import MissingCredentialError, Settings
+from mimeo.config import MissingConfigurationError, MissingCredentialError, Settings
 from mimeo.identity import AmbiguousNameError
 from mimeo.schemas import ExpertCandidate
 
@@ -59,6 +59,9 @@ def test_cli_build_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     assert settings.refresh is False
     assert settings.concurrency == 5
     assert settings.generate_avatar is True
+    assert settings.llm_provider == "openrouter"
+    assert settings.search_provider == "parallel"
+    assert settings.image_provider == "openrouter"
     assert "Done" in result.stdout
 
 
@@ -117,6 +120,49 @@ def test_cli_build_flags(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Non
     assert settings.concurrency == 2
 
 
+def test_cli_build_provider_flags(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    captured: dict = {}
+    _patch_run_pipeline(monkeypatch, captured=captured)
+    result = runner.invoke(
+        app,
+        [
+            "Test Expert",
+            "--llm-provider",
+            "openai",
+            "--model",
+            "gpt-test",
+            "--search-provider",
+            "parallel",
+            "--image-provider",
+            "none",
+            "--output-dir",
+            str(tmp_path),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+    settings: Settings = captured["settings"]
+    assert settings.llm_provider == "openai"
+    assert settings.model == "gpt-test"
+    assert settings.search_provider == "parallel"
+    assert settings.image_provider == "none"
+
+
+def test_cli_non_openrouter_without_model_exits_2(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "Someone",
+            "--llm-provider",
+            "openai",
+            "--output-dir",
+            str(tmp_path),
+        ],
+    )
+    assert result.exit_code == 2
+    assert "Missing configuration" in result.stdout
+    assert "MIMEO_OPENAI_MODEL" in result.stdout
+
+
 def test_cli_build_missing_credentials_exits_2(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -131,6 +177,20 @@ def test_cli_build_missing_credentials_exits_2(
     )
     assert result.exit_code == 2
     assert "Missing credential" in result.stdout
+
+
+def test_cli_build_missing_configuration_exits_2(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured: dict = {}
+    _patch_run_pipeline(
+        monkeypatch,
+        captured=captured,
+        raise_=MissingConfigurationError("bad provider config"),
+    )
+    result = runner.invoke(app, ["Someone", "--output-dir", str(tmp_path)])
+    assert result.exit_code == 2
+    assert "Missing configuration" in result.stdout
 
 
 def test_cli_build_pipeline_failure_exits_1(

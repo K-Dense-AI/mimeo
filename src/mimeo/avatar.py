@@ -1,7 +1,8 @@
-"""Generate an illustrative avatar portrait for an expert via OpenRouter.
+"""Generate an illustrative avatar portrait for an expert.
 
-OpenRouter exposes image-capable models (e.g. ``openai/gpt-5.4-image-2``)
-through the same ``/chat/completions`` endpoint, opted into with
+OpenRouter is the only implemented image provider in v1. It exposes
+image-capable models (e.g. ``openai/gpt-5.4-image-2``) through the same
+``/chat/completions`` endpoint, opted into with
 ``modalities: ["image", "text"]``. The generated image comes back as a
 base64-encoded data URL inside ``choices[0].message.images[i].image_url.url``,
 which we decode straight to ``avatar.<ext>`` in the skill directory.
@@ -14,9 +15,10 @@ from __future__ import annotations
 
 import base64
 import logging
+import os
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import httpx
 
@@ -85,6 +87,64 @@ def _extract_image(body: dict[str, Any]) -> tuple[bytes, str] | None:
 
 
 async def generate_avatar(
+    *,
+    settings: Settings,
+    client: httpx.AsyncClient | None = None,
+) -> Path | None:
+    """Generate an avatar through the configured image provider."""
+    provider = create_image_provider(settings)
+    return await provider.generate_avatar(settings=settings, client=client)
+
+
+class ImageProvider(Protocol):
+    async def generate_avatar(
+        self,
+        *,
+        settings: Settings,
+        client: httpx.AsyncClient | None = None,
+    ) -> Path | None:
+        ...
+
+
+class NullImageProvider:
+    def __init__(self, reason: str) -> None:
+        self.reason = reason
+
+    async def generate_avatar(
+        self,
+        *,
+        settings: Settings,
+        client: httpx.AsyncClient | None = None,
+    ) -> Path | None:
+        logger.info("Skipping avatar generation: %s", self.reason)
+        return None
+
+
+class OpenRouterImageProvider:
+    async def generate_avatar(
+        self,
+        *,
+        settings: Settings,
+        client: httpx.AsyncClient | None = None,
+    ) -> Path | None:
+        return await _generate_openrouter_avatar(settings=settings, client=client)
+
+
+def create_image_provider(settings: Settings) -> ImageProvider:
+    if settings.image_provider == "none":
+        return NullImageProvider("image provider is disabled")
+    if settings.image_provider == "openrouter":
+        if settings.llm_provider != "openrouter" and not os.environ.get(
+            "OPENROUTER_API_KEY"
+        ):
+            return NullImageProvider(
+                "OpenRouter image provider requires OPENROUTER_API_KEY"
+            )
+        return OpenRouterImageProvider()
+    return NullImageProvider(f"unsupported image provider: {settings.image_provider}")
+
+
+async def _generate_openrouter_avatar(
     *,
     settings: Settings,
     client: httpx.AsyncClient | None = None,

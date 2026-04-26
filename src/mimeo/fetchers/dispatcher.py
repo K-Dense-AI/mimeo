@@ -8,8 +8,8 @@ import logging
 from pathlib import Path
 
 from ..config import Mode, Settings
-from ..parallel_client import ParallelClient
 from ..schemas import FetchedContent, Source
+from ..search import SearchProvider
 from .web import fetch_web
 from .youtube import fetch_youtube_captions
 
@@ -20,7 +20,7 @@ async def fetch_one(
     source: Source,
     *,
     mode: Mode,
-    parallel: ParallelClient,
+    parallel: SearchProvider,
 ) -> FetchedContent:
     if source.medium == "youtube" and mode in ("captions", "full"):
         fetched = await fetch_youtube_captions(source)
@@ -45,7 +45,7 @@ async def fetch_all(
     sources: list[Source],
     *,
     settings: Settings,
-    parallel: ParallelClient,
+    parallel: SearchProvider,
 ) -> list[FetchedContent]:
     raw_dir = settings.workspace_dir / "raw"
     sem = asyncio.Semaphore(settings.concurrency)

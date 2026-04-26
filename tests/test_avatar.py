@@ -12,6 +12,7 @@ import pytest
 from mimeo.avatar import (
     _build_prompt,
     _extract_image,
+    create_image_provider,
     generate_avatar,
 )
 from mimeo.config import Settings
@@ -197,6 +198,12 @@ def test_extract_image_skips_undecodable_base64() -> None:
     assert _extract_image(body) is None
 
 
+def test_create_image_provider_disabled(tmp_path: Path) -> None:
+    s = _settings(tmp_path, image_provider="none")
+    provider = create_image_provider(s)
+    assert provider.__class__.__name__ == "NullImageProvider"
+
+
 # ---------------------------------------------------------------------------
 # generate_avatar
 # ---------------------------------------------------------------------------
@@ -235,6 +242,16 @@ async def test_generate_avatar_returns_none_when_no_image(tmp_path: Path) -> Non
         path = await generate_avatar(settings=s, client=client)
     assert path is None
     assert not (s.skill_dir / "avatar.png").exists()
+
+
+@pytest.mark.asyncio
+async def test_generate_avatar_skips_openrouter_image_without_key_for_direct_llm(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    s = _settings(tmp_path, llm_provider="openai", model="gpt-test")
+    path = await generate_avatar(settings=s)
+    assert path is None
 
 
 @pytest.mark.asyncio

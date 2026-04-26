@@ -13,8 +13,8 @@ import logging
 from pathlib import Path
 
 from .config import Settings
-from .parallel_client import ParallelClient
 from .schemas import FetchedContent, Source
+from .search import SearchProvider
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def _task_input(expert: str) -> str:
 async def deep_research(
     *,
     settings: Settings,
-    parallel: ParallelClient,
+    parallel: SearchProvider,
 ) -> tuple[Source, FetchedContent] | None:
     """Run deep research; return (pseudo_source, fetched_content) or None on failure."""
     cache_dir = settings.workspace_dir / "research"

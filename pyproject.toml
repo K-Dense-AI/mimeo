@@ -1,7 +1,7 @@
 [project]
 name = "mimeo"
 version = "0.1.1"
-description = "Turn an expert's body of work into a ready-to-use Agent Skill (SKILL.md + references) via Parallel + OpenRouter."
+description = "Turn an expert's body of work into a ready-to-use Agent Skill (SKILL.md + references) via pluggable search and LLM providers."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -12,6 +12,8 @@ dependencies = [
     "python-slugify>=8.0.4",
     "python-dotenv>=1.0.1",
     "openai>=1.58.1",
+    "anthropic[aiohttp]>=0.50.0",
+    "google-genai>=1.0.0",
     "parallel-web[aiohttp]>=0.4.2",
     "trafilatura>=2.0.0",
     "youtube-transcript-api>=0.6.3",
@@ -81,4 +83,5 @@ exclude_lines = [
 [dependency-groups]
 dev = [
     "pytest-cov>=7.1.0",
+    "pytest-asyncio>=0.25.0",
 ]

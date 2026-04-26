@@ -14,10 +14,16 @@ from rich.logging import RichHandler
 
 from .config import (
     DEFAULT_AVATAR_MODEL,
-    DEFAULT_MODEL,
+    DEFAULT_IMAGE_PROVIDER,
+    DEFAULT_LLM_PROVIDER,
+    DEFAULT_SEARCH_PROVIDER,
     Format,
+    ImageProviderName,
+    LLMProvider,
+    MissingConfigurationError,
     Mode,
     MissingCredentialError,
+    SearchProviderName,
     Settings,
 )
 from .identity import AmbiguousNameError
@@ -41,7 +47,7 @@ def _setup_logging(verbose: bool) -> None:
         handlers=[RichHandler(console=console, rich_tracebacks=True, show_path=verbose)],
     )
     # Tame noisy deps.
-    for name in ("httpx", "httpcore", "openai", "urllib3", "parallel"):
+    for name in ("httpx", "httpcore", "openai", "anthropic", "urllib3", "parallel"):
         logging.getLogger(name).setLevel(logging.WARNING)
 
 
@@ -76,9 +82,31 @@ def build(
         ),
     ] = False,
     model: Annotated[
-        str,
-        typer.Option("--model", help="Any OpenRouter model slug."),
-    ] = DEFAULT_MODEL,
+        str | None,
+        typer.Option(
+            "--model",
+            help=(
+                "Provider-native model id. Required for non-OpenRouter providers "
+                "unless MIMEO_MODEL or MIMEO_<PROVIDER>_MODEL is set."
+            ),
+        ),
+    ] = None,
+    llm_provider: Annotated[
+        LLMProvider,
+        typer.Option(
+            "--llm-provider",
+            help="Text LLM provider.",
+            case_sensitive=False,
+        ),
+    ] = DEFAULT_LLM_PROVIDER,
+    search_provider: Annotated[
+        SearchProviderName,
+        typer.Option(
+            "--search-provider",
+            help="Search provider. Parallel is the only v1 implementation.",
+            case_sensitive=False,
+        ),
+    ] = DEFAULT_SEARCH_PROVIDER,
     output_dir: Annotated[
         Path,
         typer.Option("--output-dir", help="Where the generated skill directory lands."),
@@ -147,6 +175,14 @@ def build(
             ),
         ),
     ] = True,
+    image_provider: Annotated[
+        ImageProviderName,
+        typer.Option(
+            "--image-provider",
+            help="Avatar image provider.",
+            case_sensitive=False,
+        ),
+    ] = DEFAULT_IMAGE_PROVIDER,
     avatar_model: Annotated[
         str,
         typer.Option(
@@ -164,28 +200,33 @@ def build(
     """Build an Agent Skill for ``EXPERT`` from their body of work."""
     _setup_logging(verbose)
 
-    settings = Settings(
-        expert_name=expert,
-        output_dir=output_dir.resolve(),
-        mode=mode,
-        format=fmt,
-        max_sources=max_sources,
-        deep_research=deep_research,
-        model=model,
-        concurrency=concurrency,
-        refresh=refresh,
-        expert_description=disambiguator,
-        assume_unambiguous=assume_unambiguous,
-        verify_quotes=verify_quotes,
-        critique=critique,
-        generate_avatar=avatar,
-        avatar_model=avatar_model,
-    )
-
     try:
+        settings = Settings(
+            expert_name=expert,
+            output_dir=output_dir.resolve(),
+            mode=mode,
+            format=fmt,
+            max_sources=max_sources,
+            deep_research=deep_research,
+            model=model,
+            llm_provider=llm_provider,
+            search_provider=search_provider,
+            image_provider=image_provider,
+            concurrency=concurrency,
+            refresh=refresh,
+            expert_description=disambiguator,
+            assume_unambiguous=assume_unambiguous,
+            verify_quotes=verify_quotes,
+            critique=critique,
+            generate_avatar=avatar,
+            avatar_model=avatar_model,
+        )
         out_path = asyncio.run(run_pipeline(settings, console=console))
     except MissingCredentialError as exc:
         console.print(f"[bold red]Missing credential:[/bold red] {exc}")
+        raise typer.Exit(code=2)
+    except MissingConfigurationError as exc:
+        console.print(f"[bold red]Missing configuration:[/bold red] {exc}")
         raise typer.Exit(code=2)
     except AmbiguousNameError as exc:
         console.print(f"[bold yellow]Ambiguous name.[/bold yellow]\n{exc}")
