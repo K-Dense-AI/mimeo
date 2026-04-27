@@ -20,6 +20,7 @@ from mimeo.llm import (
     LLMClient,
     _format_schema_hint,
     _is_network_retryable,
+    _requires_default_temperature,
     _strip_code_fence,
     load_prompt,
     render_prompt,
@@ -85,6 +86,13 @@ def test_load_prompt_raises_for_missing() -> None:
 def test_load_prompt_reads_existing() -> None:
     assert "source" in load_prompt("extract").lower()
     assert "source" in load_prompt("extract.md").lower()
+
+
+def test_requires_default_temperature_only_for_direct_openai_gpt5() -> None:
+    assert _requires_default_temperature("openai", "gpt-5.5") is True
+    assert _requires_default_temperature("openai", "gpt-5.1") is True
+    assert _requires_default_temperature("openai", "gpt-4.1") is False
+    assert _requires_default_temperature("openrouter", "openai/gpt-5.5") is False
 
 
 # ---------------------------------------------------------------------------
@@ -177,6 +185,37 @@ async def test_openai_provider_uses_openai_compatible_client() -> None:
     assert out.count == 1
     assert scripted.calls[0]["model"] == "gpt-test"
     assert scripted.calls[0]["response_format"] == {"type": "json_object"}
+    assert "max_tokens" not in scripted.calls[0]
+    assert "max_completion_tokens" not in scripted.calls[0]
+
+
+@pytest.mark.asyncio
+async def test_openai_provider_uses_max_completion_tokens_when_limited() -> None:
+    client = LLMClient(provider="openai", model="gpt-test", client=SimpleNamespace())
+    scripted = _install_scripted(client, [_make_completion("ok")])
+    out = await client.complete(system=None, user="u", max_tokens=123)
+    assert out == "ok"
+    assert scripted.calls[0]["max_completion_tokens"] == 123
+    assert "max_tokens" not in scripted.calls[0]
+
+
+@pytest.mark.asyncio
+async def test_openrouter_provider_uses_max_tokens_when_limited() -> None:
+    client = LLMClient(provider="openrouter", model="router-test", client=SimpleNamespace())
+    scripted = _install_scripted(client, [_make_completion("ok")])
+    out = await client.complete(system=None, user="u", max_tokens=123)
+    assert out == "ok"
+    assert scripted.calls[0]["max_tokens"] == 123
+    assert "max_completion_tokens" not in scripted.calls[0]
+
+
+@pytest.mark.asyncio
+async def test_openai_gpt5_provider_omits_custom_temperature() -> None:
+    client = LLMClient(provider="openai", model="gpt-5.5", client=SimpleNamespace())
+    scripted = _install_scripted(client, [_make_completion("ok")])
+    out = await client.complete(system=None, user="u", temperature=0.2)
+    assert out == "ok"
+    assert "temperature" not in scripted.calls[0]
 
 
 @pytest.mark.asyncio

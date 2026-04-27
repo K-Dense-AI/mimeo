@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -43,6 +44,37 @@ from .config import (
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
+_DEBUG_LOG_PATH = Path("/Users/antoniomele/Dropbox/github/mimeo/.cursor/debug-96396b.log")
+_DEBUG_SESSION_ID = "96396b"
+
+
+def _agent_debug_log(
+    *,
+    run_id: str,
+    hypothesis_id: str,
+    location: str,
+    message: str,
+    data: dict[str, Any],
+) -> None:
+    # region agent log
+    timestamp = int(time.time() * 1000)
+    payload = {
+        "sessionId": _DEBUG_SESSION_ID,
+        "id": f"log_{timestamp}",
+        "timestamp": timestamp,
+        "location": location,
+        "message": message,
+        "data": data,
+        "runId": run_id,
+        "hypothesisId": hypothesis_id,
+    }
+    try:
+        _DEBUG_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _DEBUG_LOG_PATH.open("a", encoding="utf-8") as debug_file:
+            debug_file.write(json.dumps(payload, default=str) + "\n")
+    except OSError:
+        pass
+    # endregion
 
 
 class LLMClient:
@@ -233,12 +265,52 @@ class LLMClient:
         kwargs: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
         }
+        if not _requires_default_temperature(self.provider, self.model):
+            kwargs["temperature"] = temperature
+        if max_tokens is not None:
+            if self.provider == "openai":
+                kwargs["max_completion_tokens"] = max_tokens
+            else:
+                kwargs["max_tokens"] = max_tokens
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
-        resp = await self._client.chat.completions.create(**kwargs)
+        # region agent log
+        _agent_debug_log(
+            run_id="pre-fix",
+            hypothesis_id="H1,H2,H3,H4",
+            location="src/mimeo/llm.py:_complete_openai_compatible:before_create",
+            message="About to call OpenAI-compatible chat completion",
+            data={
+                "provider": self.provider,
+                "model": self.model,
+                "max_tokens": max_tokens,
+                "json_mode": json_mode,
+                "kwargs_keys": sorted(kwargs),
+            },
+        )
+        # endregion
+        try:
+            resp = await self._client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            # region agent log
+            _agent_debug_log(
+                run_id="pre-fix",
+                hypothesis_id="H1,H2,H3,H4",
+                location="src/mimeo/llm.py:_complete_openai_compatible:error",
+                message="OpenAI-compatible chat completion raised",
+                data={
+                    "provider": self.provider,
+                    "model": self.model,
+                    "max_tokens": max_tokens,
+                    "json_mode": json_mode,
+                    "exception_type": type(exc).__name__,
+                    "status_code": getattr(exc, "status_code", None),
+                    "body": getattr(exc, "body", None),
+                },
+            )
+            # endregion
+            raise
         return (resp.choices[0].message.content or "").strip()
 
     async def _complete_anthropic(
@@ -323,6 +395,11 @@ def _network_retryer() -> AsyncRetrying:
         retry=retry_if_exception(_is_network_retryable),
         reraise=True,
     )
+
+
+def _requires_default_temperature(provider: LLMProvider, model: str) -> bool:
+    """OpenAI GPT-5 models currently reject custom temperature values."""
+    return provider == "openai" and model.startswith("gpt-5")
 
 
 def _strip_code_fence(text: str) -> str:

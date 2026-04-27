@@ -1,0 +1,1 @@
+uv run mimeo "Thomas Sargent" -f 'both' --mode 'full' --max-sources 200 --deep-research -d "economist, Nobel laureate, Stanford University, quantecon" --llm-provider 'openai' --model 'gpt-5.5' --avatar 
