@@ -301,7 +301,7 @@ def _guess_medium(url: str) -> str:
     lowered = url.lower()
     if "youtube.com/watch" in lowered or "youtu.be/" in lowered:
         return "youtube"
-    if any(s in lowered for s in (".mp3", ".m4a", "podcasts.apple.com", "spotify.com/episode")):
+    if any(s in lowered for s in (".mp3", ".m4a", "podcasts.apple.com")):
         return "audio"
     return "web"
 

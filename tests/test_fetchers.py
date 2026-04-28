@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import builtins
 import sys
 import types
 from pathlib import Path
@@ -346,6 +347,24 @@ def _install_fake_whisper(
 
     module.WhisperModel = _WhisperModel  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "faster_whisper", module)
+
+
+def test_download_audio_missing_yt_dlp_has_actionable_message(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from mimeo.fetchers.audio import _download_audio
+
+    real_import = builtins.__import__
+
+    def _fake_import(name: str, *args: object, **kwargs: object) -> object:
+        if name == "yt_dlp":
+            raise ModuleNotFoundError("No module named 'yt_dlp'", name="yt_dlp")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", _fake_import)
+
+    with pytest.raises(RuntimeError, match="uv sync --extra full"):
+        _download_audio("https://example.com/a.mp3", tmp_path)
 
 
 @pytest.mark.asyncio

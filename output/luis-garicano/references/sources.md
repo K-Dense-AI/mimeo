@@ -1,0 +1,52 @@
+# Sources used for Luis Garicano
+
+Every source consulted while building this skill, in rank order. Ids match the attributions in the other reference files.
+
+- **src_000** — _essays_: [Luis Garicano - Wikipedia](https://en.wikipedia.org/wiki/Luis_Garicano) [2026-04-09]
+- **src_001** — _essays_: [Professor Luis Garicano](https://www.lse.ac.uk/people/luis-garicano) [2025-11-26]
+- **src_002** — _essays_: [Luis Garicano (@lugaricano) / Posts / X - Twitter](https://x.com/lugaricano?lang=en)
+- **src_003** — _essays_: [Luis Garicano](http://scholar.google.com/citations?hl=en&user=rjnKsr8AAAAJ)
+- **src_004** — _essays_: [The Good Fight, 04/25/26 – Rational Review News Digest](https://news.rationalreview.com/archives/271342)
+- **src_005** — _essays_: [Luis Garicano on the Economics of Artificial Intelligence](https://podtail.com/en/podcast/the-good-fight/luis-garicano-on-the-economics-of-artificial-intel/)
+- **src_006** — _essays_: [Luis Garicano on the Economics of Artificial Intelligence](https://www.persuasion.community/p/luis-garicano) [2026-04-25]
+- **src_007** — _essays_: [Luis Garicano on the Economics of Artificial Intelligence](https://podwise.ai/dashboard/episodes/7846372)
+- **src_008** — _essays_: [Scholarly articles for  organizational re‑biopsy utilization cohort studies NSCLC 2021‑2026 -site:wikipedia.org -site:medium.com -site:substack.com -site:reddit.com -site:quora.com -site:news.yahoo.com](https://scholar.google.com/scholar?as_sdt=0&as_vis=1&hl=en&oi=scholart&q=organizational%2Bre%E2%80%91biopsy%2Butilization%2Bcohort%2Bstudies%2BNSCLC%2B2021%E2%80%912026%2B-site%3Awikipedia.org%2B-site%3Amedium.com%2B-site%3Asubstack.com%2B-site%3Areddit.com%2B-site%3Aquora.com%2B-site%3Anews.yahoo.com)
+- **src_009** — _essays_: [Luis Garicano - Why Sweden has so many unicorns](https://www.linkedin.com/posts/luisgaricano_why-sweden-has-so-many-unicorns-activity-7429071101646823424--9IA)
+- **src_010** — _talks_: [24th Annual Lecture by Luis GARICANO | Coleurope](https://www.coleurope.eu/24th-annual-lecture-luis-garicano)
+- **src_011** — _talks_: [‪Luis Garicano‬ - ‪Google Scholar‬](https://scholar.google.com/citations?user=rjnKsr8AAAAJ&hl=en)
+- **src_012** — _talks_: [Focus on the Micro, not the Macro - by Luis Garicano](https://www.siliconcontinent.com/p/focus-on-the-micro-not-the-macro) [2025-01-15]
+- **src_013** — _talks_: [Luis Garicano - Speaker at Thinking Heads](https://thinkingheads.com/en/speakers/luis-garicano/) [2025-07-31]
+- **src_014** — _talks_: [(untitled)](http://siliconcontinent.com/about)
+- **src_015** — _talks_: [Towards digital dollarization? - by Luis Garicano](https://www.siliconcontinent.com/p/towards-digital-dollarization) [2025-05-07]
+- **src_016** — _talks_: [The Eurozone's Crisis Cycle: A conversation with Luis Garicano](https://www.youtube.com/watch?v=7V-WnUGvGGA)
+- **src_017** — _interviews_: [#24 Dr. Luis Garicano - Rethinking EU Climate Policy: Trade ...](https://www.climateeconomicswitharvid.com/p/25-dr-luis-garicano-rethinking-eu) [2026-04-21]
+- **src_018** — _interviews_: [Luis Garicano on the Economics of Artificial Intelligence](https://www.youtube.com/watch?v=ncVO6MV3FZo)
+- **src_019** — _interviews_: [Why Does Europe Struggle with Innovation? With Luis Garicano ...](https://www.listennotes.com/podcasts/the-capitalism-and/why-does-europe-struggle-jH3Gkg2Estq/) [2026-01-08]
+- **src_020** — _interviews_: [The EU and the not-so-simple macroeconomics of AI – Luis Garicano | Epoch AI](https://epoch.ai/epoch-after-hours/luis-garicano-not-so-simple-macroeconomics-of-ai/) [2025-12-18]
+- **src_021** — _podcasts_: [Luis Garicano on the Economics of Artificial Intelligence](https://www.listennotes.com/podcasts/the-good-fight/luis-garicano-on-the-Sz9J47NT1Eb/) [2026-04-25]
+- **src_022** — _podcasts_: [The EU and the not-so-simple macroeconomics of AI - Luis Garicano](https://open.spotify.com/episode/1cpasEkIhQVshXpZLQSZ5r)
+- **src_023** — _podcasts_: [Luis Garicano on the Future of Digital Money and Lessons ...](https://www.iheart.com/podcast/263-macro-musings-with-david-b-158427182/episode/luis-garicano-on-the-future-of-284620312/) [2025-06-18]
+- **src_024** — _podcasts_: [Why Does Europe Struggle with Innovation? With Luis Garicano ...](https://capitalism-and-freedom-in-the-21st-century.podbean.com/e/why-does-europe-struggle-with-innovation-with-luis-garicano-hoover-institution-1767893779/) [2026-01-08]
+- **src_025** — _podcasts_: [Luis Garicano on the Economics of Artificial Intelligence](https://www.ivoox.com/en/luis-garicano-on-the-economics-of-artificial-intelligence-audios-mp3_rf_172549630_1.html) [2026-04-25]
+- **src_026** — _frameworks_: [The Constitution of Innovation](https://constitutionofinnovation.eu/) [2025-11-10]
+- **src_027** — _frameworks_: [Luis Garicano | Becker Friedman Institute - BFI](https://bfi.uchicago.edu/people/luis-garicano/)
+- **src_028** — _frameworks_: [Ten Principles of Microeconomics | PDF | Microeconomics | Economics](https://www.scribd.com/document/111225222/Ten-Principles-of-Microeconomics)
+- **src_029** — _frameworks_: [Luis Garicano - Research Publications - Google Sites](https://sites.google.com/site/luisgaricano/publications)
+- **src_030** — _frameworks_: [Macroeconomics](https://en.wikipedia.org/wiki/Macroeconomics)
+- **src_031** — _frameworks_: [Microsoft Word - wp1803_garicano_lastra_architecture.docx](https://cep.lse.ac.uk/pubs/download/dp0990.pdf)
+- **src_032** — _books_: [Luis Garicano (Author of El dilema de España) - Goodreads](https://www.goodreads.com/author/show/6700843.Luis_Garicano)
+- **src_033** — _books_: [Luis Garicano: Latest Articles, Analysis and Profile | South China Morning Post](https://www.scmp.com/author/luis-garicano) [2025-08-21]
+- **src_034** — _books_: [Luis Garicano Bestsellers, Signed & First Editions | AbeBooks](https://www.abebooks.com/author/b07p25pbgk/luis-garicano)
+- **src_035** — _books_: [John H. Cochrane, Klaus Masuch, and Luis Garicano, "Crisis ...](https://newbooksnetwork.com/crisis-cycle)
+- **src_036** — _books_: [Pieter Garicano](http://linkedin.com/in/pietergaricano)
+- **src_037** — _papers_: [Training in the Age of AI: A Theory of Career Viability - Growth Lab](https://growthlab.hks.harvard.edu/event/training-in-the-age-of-ai-a-theory-of-career-viability/) [2026-04-08]
+- **src_038** — _papers_: [DP20634 Training in the Age of AI: A Theory of Apprenticeship Viability | CEPR](https://cepr.org/publications/dp20634) [2025-09-10]
+- **src_039** — _papers_: [PubMed](https://pubmed.ncbi.nlm.nih.gov/)
+- **src_040** — _papers_: [Luis Garicano - Working Papers - Google Sites](https://sites.google.com/site/luisgaricano/teaching)
+- **src_041** — _papers_: [The Effects of Business-to-Business E-Commerce on Transaction Costs | NBER](https://www.nber.org/papers/w8017) [2000-11-01]
+- **src_042** — _letters_: [A New Year’s letter to a young person - by Luis Garicano](https://www.siliconcontinent.com/p/a-new-years-letter-to-a-young-person) [2026-01-02]
+- **src_043** — _letters_: [Archive - Silicon Continent](https://www.siliconcontinent.com/archive)
+- **src_044** — _letters_: [Luis Garicano – EUobserver](https://euobserver.com/author/luis-garicano/) [2024-07-17]
+- **src_045** — _letters_: [Letter from the ECB President to Mr Luis Garicano, MEP, on ...](https://www.ecb.europa.eu/pub/pdf/other/ecb.mepletter220311_Garicano~499be00acb.en.pdf)
+- **src_046** — _letters_: [Hierarchies and the Organization of Knowledge in Production](https://scholar.archive.org/work/dtefbnypqbg2jijj4itqujdhvm)
+- **src_research** — _deep-research_: [Parallel deep research: Luis Garicano](parallel://deep-research)
