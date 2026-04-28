@@ -42,7 +42,16 @@ pip install -e .
 
 # For podcast audio transcription (optional, slower, heavier)
 uv sync --extra full
+
+# pip equivalent
+pip install -e '.[full]'
 ```
+
+The `full` extra installs `yt-dlp` plus `faster-whisper`; `--mode full` uses
+them for local audio transcription. The package/executable name is `yt-dlp`;
+the Python import name is `yt_dlp`. yt-dlp is not YouTube-only, but site support
+varies; unsupported podcast directories are fetched as web pages unless they
+expose direct audio.
 
 Copy `.env.example` to `.env` and fill in:
 

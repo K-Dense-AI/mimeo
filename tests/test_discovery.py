@@ -33,7 +33,7 @@ def test_guess_medium() -> None:
     assert _guess_medium("https://example.com/a.mp3") == "audio"
     assert _guess_medium("https://example.com/a.m4a") == "audio"
     assert _guess_medium("https://podcasts.apple.com/episode") == "audio"
-    assert _guess_medium("https://open.spotify.com/episode/x") == "audio"
+    assert _guess_medium("https://open.spotify.com/episode/x") == "web"
     assert _guess_medium("https://example.com/essay") == "web"
 
 

@@ -58,7 +58,10 @@ def build(
         Mode,
         typer.Option(
             "--mode",
-            help="text: web only. captions: web + YouTube captions. full: + audio transcription.",
+            help=(
+                "text: web only. captions: web + YouTube captions. "
+                "full: + audio transcription; requires the [full] extra."
+            ),
             case_sensitive=False,
         ),
     ] = "captions",

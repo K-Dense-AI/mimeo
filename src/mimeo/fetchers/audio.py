@@ -17,6 +17,11 @@ from ..schemas import FetchedContent, Source
 logger = logging.getLogger(__name__)
 
 _MODEL_NAME = "base"  # good speed/quality balance; user can swap later
+_YTDLP_INSTALL_HINT = (
+    "Missing optional audio dependency 'yt-dlp' (Python import name 'yt_dlp'). "
+    "Install audio transcription support with `uv sync --extra full` or "
+    "`pip install -e '.[full]'`, or run without `--mode full`."
+)
 
 
 async def fetch_audio(source: Source) -> FetchedContent:
@@ -49,7 +54,12 @@ async def fetch_audio(source: Source) -> FetchedContent:
 
 def _download_audio(url: str, out_dir: Path) -> Path:
     """Use yt-dlp to pull a best-effort audio-only file into ``out_dir``."""
-    from yt_dlp import YoutubeDL  # type: ignore[import-not-found]
+    try:
+        from yt_dlp import YoutubeDL  # type: ignore[import-not-found]
+    except ModuleNotFoundError as exc:
+        if exc.name == "yt_dlp":
+            raise RuntimeError(_YTDLP_INSTALL_HINT) from exc
+        raise
 
     template = str(out_dir / "%(id)s.%(ext)s")
 
