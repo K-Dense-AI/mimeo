@@ -1,0 +1,70 @@
+# Sources used for Gary Becker
+
+Every source consulted while building this skill, in rank order. Ids match the attributions in the other reference files.
+
+- **src_000** — _essays_: [Blog | Becker](https://www.becker.com/blog)
+- **src_001** — _essays_: [Gary Becker Research Papers - Academia.edu](https://www.academia.edu/Documents/in/Gary_Becker) [2025-01-01]
+- **src_002** — _essays_: [Becker Blog – Page 2 - Bernard Becker Medical Library](https://becker.wustl.edu/news/page/2)
+- **src_003** — _essays_: [Gary Becker - HuffPost](https://www.huffpost.com/author/gary-becker) [2011-05-25]
+- **src_004** — _essays_: [CPA Exam Review Updates - Becker](https://www.becker.com/blog/cpa/cpa-exam-review-updates) [2026-02-09]
+- **src_005** — _essays_: [Gary Becker | NBER](https://www.nber.org/people/gary_becker)
+- **src_006** — _essays_: [Gary Becker's Contributions to Family and Household Economics | NBER](https://www.nber.org/papers/w9232) [2002-09-25]
+- **src_007** — _essays_: [Gary Becker Archives - Freakonomics](https://freakonomics.com/tag/gary-becker/) [2011-03-16]
+- **src_008** — _essays_: [Scholarly articles for  Gary Becker economics of discrimination peer‑reviewed journal articles 2026 gender equity](https://scholar.google.com/scholar?as_sdt=0&as_vis=1&hl=en&oi=scholart&q=Gary%2BBecker%2Beconomics%2Bof%2Bdiscrimination%2Bpeer%E2%80%91reviewed%2Bjournal%2Barticles%2B2026%2Bgender%2Bequity)
+- **src_009** — _essays_: [Gary Becker - partner at Dinsmore & Shohl LLP](https://www.linkedin.com/in/gary-becker-87934021)
+- **src_010** — _talks_: [Impact of the Work of Gary S. Becker | Becker Friedman Institute](https://bfi.uchicago.edu/impact-of-the-work-of-gary-s-becker/) [2025-08-07]
+- **src_011** — _talks_: [Human Capital Theory and Applications - Class Central](https://www.classcentral.com/course/youtube-lectures-on-human-capital-by-gary-becker-514671)
+- **src_012** — _talks_: [Upgrades power RV resort near Empire | Local News](http://record-eagle.com/news/local_news/upgrades-power-rv-resort-near-empire/article_216c0ab9-e631-5dd5-8d2d-bb3d2952f9dd.html)
+- **src_013** — _talks_: [Prof. Gary Becker Humanities Keynote - YouTube](https://www.youtube.com/watch?v=qhZ2B4tztFA)
+- **src_014** — _talks_: [Gary E. Becker • Dinsmore & Shohl](https://www.dinsmore.com/people/gary-e-becker) [2026-01-07]
+- **src_015** — _talks_: [The economics of  discrimination](https://scholar.google.com/scholar_url?dq=Becker%2Bdiscrimination%2Bmodel%2Bmedical%2Boutcomes%2Bscholarly%2Bstudy&ei=W-Dhaf2eDZGrieoP_c6DqAo&hl=en&id=50qHcSNVVEMC&lr&oi=fnd&oi=scholarr&ots=ETlYOkinxn&pg=PP7&sa=X&scisig=ADi0EEU0KkNWzMS8G3fPhLRKq0Vh&sig=tjwUkLsTVY9oEqKQcbcsQ9d7PpU&url=https%3A%2F%2Fbooks.google.com%2Fbooks%3Fhl%3Den)
+- **src_016** — _talks_: [Investment in Human Capital: A Theoretical Analysis](https://cooperative-individualism.org/becker-gary_investment-in-human-capital-1962-oct.pdf)
+- **src_017** — _talks_: [Introduction to a Theory of the Allocation of Time by Gary Becker | The Economic Journal | Oxford Academic](https://academic.oup.com/ej/article/125/583/403/5076988) [2015-03-01]
+- **src_018** — _talks_: [Gary S. Becker - Prize Lecture](https://www.nobelprize.org/uploads/2018/06/becker-lecture.pdf)
+- **src_019** — _interviews_: [Interview with Gary Becker | Federal Reserve Bank of Minneapolis](https://www.minneapolisfed.org/article/2002/interview-with-gary-becker) [2002-05-31]
+- **src_020** — _interviews_: [Campground Series with MARVAC and Indigo Bluffs -This ...](http://youtube.com/watch?v=bPz_JgoqWZg)
+- **src_021** — _interviews_: [Microsoft Word - Becker--ENG--EcSoc.doc - hse.ru](https://www.hse.ru/data/2010/05/30/1219913359/Becker--ENG--EcSoc.pdf)
+- **src_022** — _interviews_: [A Conversation with Gary Becker - YouTube](https://www.youtube.com/watch?v=Fn6Sdd1zO4s)
+- **src_023** — _interviews_: [Gary Beker, MBA - Maxx Mail USA](https://www.linkedin.com/in/gary-beker-mba-5a8117140)
+- **src_024** — _interviews_: [VIDEO: Intellectual Journey with Gary Becker - Conversations ...](https://www.uctv.tv/shows/Intellectual-Journey-with-Gary-Becker-Conversations-with-History-25071) [2013-05-06]
+- **src_025** — _interviews_: [Owner, Gary D. Becker Insurance Agency](https://www.linkedin.com/in/gary-becker-48ba1139)
+- **src_026** — _interviews_: [Dr. Gary L. Becker, DDS | Dentist in Dayton, OH - Health](https://health.usnews.com/dentists/gary-becker-1695728)
+- **src_027** — _interviews_: [An Interview with Gary Becker - Econlib - econtalk.org](https://www.econtalk.org/an-interview-with-gary-becker/) [2022-08-13]
+- **src_028** — _podcasts_: [Season 7 - Episode 4 - Gary Becker - Economics In Ten ...](https://open.spotify.com/episode/6VAw5OLSxUfMtxg2ccLQkf)
+- **src_029** — _podcasts_: [Season 7 - Episode 4 - Gary Becker - Apple Podcasts](https://podcasts.apple.com/us/podcast/season-7-episode-4-gary-becker/id1450116373?i=1000645408678) [2024-02-15]
+- **src_030** — _podcasts_: [Fire Department - City of Gary](http://gary.gov/fire-department)
+- **src_031** — _podcasts_: [Becker's Healthcare Podcast — Full Episode Transcripts](https://podcasts.happyscribe.com/becker-s-healthcare-podcast) [2025-07-07]
+- **src_032** — _podcasts_: [Rob Grady's Journey Through Firefighting in Gary, Indiana](http://fireengineering.com/firefighting/rob-gradys-journey-through-firefighting-in-gary-indiana) [2025-10-27]
+- **src_033** — _podcasts_: [Gary S. Becker – The Economic Approach to Human Behavior ...](https://www.youtube.com/watch?v=EvWqudgIobs)
+- **src_034** — _podcasts_: [7 employee engagement podcasts to listen to in 2026](http://gethirex.com/blog/7-employee-engagement-podcasts-to-listen-to-in-2026) [2025-12-08]
+- **src_035** — _podcasts_: [The Economics of Life by Gary Becker: Podcast Recommendations ...](https://podcastmentions.com/book/economics-of-life-gary-becker)
+- **src_036** — _frameworks_: [GARY BECKER AND THE ART OF ECONOMICS - JSTOR](https://www.jstor.org/stable/26422355)
+- **src_037** — _frameworks_: [Economic Insights: Gary S. Becker's Contributions and Impact - SuperMoney](https://www.supermoney.com/encyclopedia/gary-becker-bio) [2024-03-22]
+- **src_038** — _frameworks_: [Economic Theory | Gary Becker | Taylor & Francis eBooks, Reference Wor](https://www.taylorfrancis.com/books/mono/10.4324/9781351327688/economic-theory-gary-becker) [2017-09-08]
+- **src_039** — _frameworks_: [Gary Stanley Becker | Philopedia](https://philopedia.org/thinkers/gary-stanley-becker/)
+- **src_040** — _frameworks_: [81 GARY BECKER ON HUMAN CAPITAL - JSTOR](https://www.jstor.org/stable/26422358)
+- **src_041** — _frameworks_: [(untitled)](http://yelp.com/biz/becker-gary-l-dds-laura)
+- **src_042** — _frameworks_: [Gary Becker - Butera, Israel & Becker PLLC](https://www.linkedin.com/in/garybeckerlaw)
+- **src_043** — _frameworks_: [Big rigs bring boomers to Empire – Glen Arbor Sun](http://glenarborsun.com/big-rigs-bring-boomers-to-empire)
+- **src_044** — _frameworks_: [Gary Becker's a Theory of the Allocation of Time | The Economic Journal | Oxford Academic](https://academic.oup.com/ej/article/125/583/410/5076992) [2015-03-01]
+- **src_045** — _books_: [Gary Becker - Wikipedia](https://en.wikipedia.org/wiki/Gary_Becker) [2026-03-13]
+- **src_046** — _books_: [Human Capital: A Theoretical and Empirical Analysis, with ...](https://www.nber.org/system/files/chapters/c3730/c3730.pdf)
+- **src_047** — _books_: [Gary S. Becker - can be](http://digamo.free.fr/becker1993.pdf)
+- **src_048** — _books_: [Gary Becker - Human Capital](https://www2.um.edu.uy/acid/Family_Economics/Becker%20-%20Family%20&%20Human%20Capital.pdf)
+- **src_049** — _books_: [Human Capital | Gary S. Becker | First Edition](https://www.burnsiderarebooks.com/pages/books/140943637/gary-s-becker/human-capital)
+- **src_050** — _books_: [A Treatise on the Family — Harvard University Press](https://www.hup.harvard.edu/books/9780674906990)
+- **src_051** — _books_: [Human Capital. by Becker, Gary S: (1966) Signed by Author(s) | Raptis Rare Books](https://www.abebooks.com/signed-first-edition/Human-Capital-Becker-Gary-National-Bureau/30506152648/bd)
+- **src_052** — _books_: [An Introduction on Gary Becker’s “Human Capital Theories”](https://link.springer.com/content/pdf/10.1007/978-3-642-27966-9_60.pdf?pdf=preview)
+- **src_053** — _books_: [A Treatise on the Family: First Edition: Becker, Gary S.](https://www.amazon.com/Treatise-Family-Gary-S-Becker/dp/0674906969)
+- **src_054** — _books_: [Gary Becker Remembered - Stanford Graduate School of Business](https://www.gsb.stanford.edu/faculty-research/publications/gary-becker-remembered)
+- **src_055** — _papers_: [Introducing Incentives in the Market for Live and Cadaveric Organ Donations - American Economic Association](https://www.aeaweb.org/articles?id=10.1257/jep.21.3.3) [2007-09-01]
+- **src_056** — _papers_: [
+            Gary Becker: Model Economic Scientist - PMC
+        ](https://pmc.ncbi.nlm.nih.gov/articles/PMC4687489/)
+- **src_057** — _papers_: [The Economic Approach: Unpublished Writings of Gary S. Becker | Chicago Scholarship Online | Oxford Academic](https://academic.oup.com/chicago-scholarship-online/book/55598) [2023-08-18]
+- **src_058** — _letters_: [gary becker - Archives & Manuscripts at Duke University ...](https://archives.lib.duke.edu/catalog?group=true&search_field=all_fields&q=gary+becker)
+- **src_059** — _letters_: [The Gary Becker Papers - Marginal REVOLUTION](https://marginalrevolution.com/marginalrevolution/2024/06/the-gary-becker-papers.html) [2024-06-30]
+- **src_060** — _letters_: [Ernest Hemingway, selected letters, 1917-1961 : Hemingway, Ernest, 1899-1961 : Free Download, Borrow, and Streaming : Internet Archive](https://archive.org/details/ernesthemingways00hemi) [2010-07-22]
+- **src_061** — _letters_: [Term browse - Letters (Correspondence) - Becker Archives Database](https://beckerarchives.wustl.edu/Letters)
+- **src_062** — _letters_: [Lee County Water Supply Corp | Giddings, TX | 990 Report](http://instrumentl.com/990-report/lee-county-water-supply-corporation)
+- **src_research** — _deep-research_: [Parallel deep research: Gary Becker](parallel://deep-research)
