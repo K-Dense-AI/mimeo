@@ -280,6 +280,8 @@ async def test_pipeline_verify_quotes_no_quotes_in_corpus(tmp_path: Path) -> Non
 @pytest.mark.asyncio
 async def test_pipeline_critique_low_score_is_surfaced(tmp_path: Path) -> None:
     """Low critique scores render as red; medium scores render as yellow."""
+    # --no-refine isolates a single critique pass so the sub-bar scores aren't
+    # consumed by the rewrite loop.
     s = Settings(
         expert_name="Test Expert",
         output_dir=tmp_path,
@@ -287,6 +289,7 @@ async def test_pipeline_critique_low_score_is_surfaced(tmp_path: Path) -> None:
         concurrency=3,
         assume_unambiguous=True,
         verify_quotes=False,
+        refine=False,
     )
     parallel = FakeParallelClient(search_by_bucket=_six_bucket_search())
     llm = FakeLLMClient()
@@ -311,6 +314,7 @@ async def test_pipeline_critique_low_score_is_surfaced(tmp_path: Path) -> None:
         concurrency=3,
         assume_unambiguous=True,
         verify_quotes=False,
+        refine=False,
     )
     parallel2 = FakeParallelClient(search_by_bucket=_six_bucket_search())
     llm2 = FakeLLMClient()
@@ -535,6 +539,35 @@ async def test_pipeline_avatar_failure_is_tolerated(
     out = await run_pipeline(s, parallel=parallel, llm=llm)
     assert (out / "SKILL.md").exists()
     assert not (out / "avatar.png").exists()
+
+
+@pytest.mark.asyncio
+async def test_pipeline_refine_path(full_settings: Settings) -> None:
+    """--refine drives the loop: a low draft is revised to clear the bar."""
+    from dataclasses import replace
+
+    s = replace(full_settings, refine=True, quality_bar=8, max_revisions=2)
+    parallel = FakeParallelClient(search_by_bucket=_six_bucket_search())
+    llm = FakeLLMClient()
+    llm.queue_structured(RankedSources, RankedSources(sources=[]))
+    for i in range(6):
+        llm.queue_structured(Extraction, sample_extraction(f"src_{i:03d}"))
+    llm.queue_structured(ClusteredCorpus, sample_clustered_corpus(s.expert_name))
+    # Two skill drafts; the second clears the bar.
+    llm.queue_structured(SkillOutput, sample_skill_output())
+    llm.queue_structured(SkillOutput, sample_skill_output())
+    llm.queue_structured(CritiqueReport, CritiqueReport(overall_score=5, summary="meh", issues=[]))
+    llm.queue_structured(CritiqueReport, CritiqueReport(overall_score=9, summary="good", issues=[]))
+
+    out = await run_pipeline(s, parallel=parallel, llm=llm)
+    assert (out / "SKILL.md").exists()
+    workspace = s.skill_dir / "_workspace"
+    # Trajectory + best-draft report persisted; canonical report = best (9).
+    assert (workspace / "refine_skill.md").exists()
+    persisted = CritiqueReport.model_validate_json(
+        (workspace / "critique_skill.json").read_text()
+    )
+    assert persisted.overall_score == 9
 
 
 @pytest.mark.asyncio

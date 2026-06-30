@@ -34,7 +34,7 @@ The pipeline:
 4. **Clusters** across sources — merging duplicates, ranking by cross-source frequency. Long corpora are batched under a prompt-size budget and stitched back together in memory, so `--max-sources 40` on a prolific writer still fits.
 5. **Verifies** every clustered quote against the source text we already fetched. Quotes that don't appear (allowing typographic normalization) are stripped from the corpus and surfaced in a human-readable `_workspace/quote_verification.md` audit trail. Disable with `--no-verify-quotes`.
 6. **Authors** the skill + optional `AGENTS.md`, emitting `heuristics.md` and `anti-patterns.md` reference files alongside the existing principles / frameworks / mental-models / quotes / sources bundle.
-7. **Critiques** the authored artifact with one more adversarial-editor LLM pass, writing a 0-10 score and a categorized issue list to `_workspace/critique_skill.md` (and `critique_agents.md` when relevant). The report is informational — mimeo doesn't auto-rewrite based on it — but gives you an honest second opinion before you ship. Disable with `--no-critique`.
+7. **Critiques and refines** the authored artifact. An adversarial-editor LLM pass grades it 0-10 with a categorized issue list, then mimeo closes the loop: it feeds that critique back into authoring, re-writes the artifact to fix the flagged issues, and re-critiques — iterating until the score clears `--quality-bar` (default 8) or `--max-revisions` (default 2) runs out, keeping the best-scoring draft. The shipped `_workspace/critique_skill.md` (and `critique_agents.md`) reflects that final draft, and the score trajectory lands in `_workspace/refine_*.md`. Use `--no-refine` for a single critique pass (report only, no rewrite), or `--no-critique` to skip the whole quality stage.
 8. **Illustrates** the expert with a painterly head-and-shoulders portrait via an OpenRouter image model (default: `openai/gpt-5.4-image-2`), saved as `avatar.png` alongside the other outputs. The step is best-effort — image-endpoint failures are logged and swallowed so they never fail the main run. Disable with `--no-avatar` or swap models with `--avatar-model`.
 
 ## Setup
@@ -78,7 +78,10 @@ Flags:
 | `--refresh` | off | Ignore cached intermediates in `_workspace/` and re-run everything. |
 | `--concurrency N` | `5` | Concurrent per-source distillation calls. |
 | `--verify-quotes` / `--no-verify-quotes` | on | Check every clustered quote against its source text before authoring; strip ones that don't match. |
-| `--critique` / `--no-critique` | on | Adversarial-editor review of the authored skill, written to `_workspace/critique_*.md`. |
+| `--critique` / `--no-critique` | on | Adversarial-editor review of the authored skill, written to `_workspace/critique_*.md`. Master switch: `--no-critique` also disables refining. |
+| `--refine` / `--no-refine` | on | Close the critique loop: re-author using the critique as feedback and iterate to the best-scoring draft. `--no-refine` keeps a single critique pass. |
+| `--max-revisions N` | `2` | Max re-author passes when refining (`0` = critique only). |
+| `--quality-bar N` | `8` | Stop refining once the critique score reaches this (0–10). |
 | `--avatar` / `--no-avatar` | on | Generate a painterly portrait avatar for the expert via an OpenRouter image model and save it as `avatar.<ext>` alongside the other outputs. |
 | `--avatar-model SLUG` | `openai/gpt-5.4-image-2` | OpenRouter image-capable model slug used for the avatar. |
 
@@ -125,7 +128,8 @@ output/naval-ravikant/
 │   └── sources.md
 ├── avatar.png          # omit with --no-avatar
 └── _workspace/         # cached intermediates (identity, discovery, raw, distilled)
-                        # + quote_verification.{json,md} and critique_skill.{json,md}
+                        # + quote_verification.{json,md}, critique_skill.{json,md},
+                        # and refine_skill.md (score trajectory, unless --no-refine)
 ```
 
 With `--format agents`:
@@ -153,6 +157,7 @@ cli -> pipeline -> identity   (Parallel search + LLM: ambiguous? which person?)
                 -> verify?    (fuzzy-match every quote against its source text)
                 -> author     (skill | agents | both) + writers
                 -> critique?  (adversarial-editor review → _workspace/critique_*.md)
+                -> refine?    (loop: critique → re-author → re-critique, keep best draft)
                 -> avatar?    (OpenRouter image model → avatar.png)
 ```
 

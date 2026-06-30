@@ -59,6 +59,9 @@ def test_cli_build_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     assert settings.refresh is False
     assert settings.concurrency == 5
     assert settings.generate_avatar is True
+    assert settings.refine is True
+    assert settings.max_revisions == 2
+    assert settings.quality_bar == 8
     assert "Done" in result.stdout
 
 
@@ -103,6 +106,11 @@ def test_cli_build_flags(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Non
             "--concurrency",
             "2",
             "--refresh",
+            "--no-refine",
+            "--max-revisions",
+            "1",
+            "--quality-bar",
+            "9",
             "--verbose",
         ],
     )
@@ -115,6 +123,9 @@ def test_cli_build_flags(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Non
     assert settings.model == "openai/gpt-5"
     assert settings.refresh is True
     assert settings.concurrency == 2
+    assert settings.refine is False
+    assert settings.max_revisions == 1
+    assert settings.quality_bar == 9
 
 
 def test_cli_build_missing_credentials_exits_2(

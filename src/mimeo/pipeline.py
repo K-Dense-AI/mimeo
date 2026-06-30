@@ -11,16 +11,16 @@ from rich.panel import Panel
 
 from .avatar import generate_avatar
 from .config import Settings, ensure_dirs
-from .critique import critique_agents, critique_skill
 from .discovery import discover_sources
 from .distill import distill_all
 from .fetchers import fetch_all
 from .identity import resolve_identity
 from .llm import LLMClient
 from .parallel_client import ParallelClient
+from .refine import refine_agents, refine_skill
 from .research import deep_research
 from .schemas import Extraction, FetchedContent, Source
-from .synthesize import author_agents, author_skill, cluster_corpus
+from .synthesize import cluster_corpus
 from .verify import verify_quotes
 from .writers import write_agents, write_skill
 
@@ -65,6 +65,7 @@ async def run_pipeline(
                 f"[bold]Deep research:[/bold] {'yes' if settings.deep_research else 'no'}\n"
                 f"[bold]Verify quotes:[/bold] {'yes' if settings.verify_quotes else 'no'}\n"
                 f"[bold]Critique:[/bold] {'yes' if settings.critique else 'no'}\n"
+                f"[bold]Refine:[/bold] {('yes (bar ' + str(settings.quality_bar) + '/10, up to ' + str(settings.max_revisions) + ' rev)') if settings.refine else 'no'}\n"
                 f"[bold]Avatar:[/bold] {'yes (' + settings.avatar_model + ')' if settings.generate_avatar else 'no'}\n"
                 f"[bold]Model:[/bold] {settings.model}\n"
                 f"[bold]Output:[/bold] {settings.skill_dir}"
@@ -195,7 +196,9 @@ async def run_pipeline(
             "Writing SKILL.md and references/*.md...",
         )
         authoring_index += 1
-        skill_output = await author_skill(corpus=corpus, settings=settings, llm=llm)
+        skill_output, skill_report, skill_traj = await refine_skill(
+            corpus=corpus, settings=settings, llm=llm
+        )
         skill_path = write_skill(
             output=skill_output, sources=sources, settings=settings
         )
@@ -207,11 +210,12 @@ async def run_pipeline(
                 "Adversarial review of the authored skill...",
             )
             authoring_index += 1
-            report = await critique_skill(
-                output=skill_output, corpus=corpus, settings=settings, llm=llm
-            )
+        # A report exists whenever a critique ran — i.e. --critique, or --refine
+        # (which critiques internally even under --no-critique). Surface it so
+        # the score / refinement trajectory isn't silently hidden.
+        if skill_report is not None:
             console.print(
-                _critique_summary(report, label="SKILL.md")
+                _refine_summary(skill_report, skill_traj, label="SKILL.md", settings=settings)
             )
 
     if write_agents_flag:
@@ -220,7 +224,9 @@ async def run_pipeline(
             "Writing AGENTS.md...",
         )
         authoring_index += 1
-        agents_output = await author_agents(corpus=corpus, settings=settings, llm=llm)
+        agents_output, agents_report, agents_traj = await refine_agents(
+            corpus=corpus, settings=settings, llm=llm
+        )
         agents_path = write_agents(
             output=agents_output, sources=sources, settings=settings
         )
@@ -232,11 +238,9 @@ async def run_pipeline(
                 "Adversarial review of the authored AGENTS.md...",
             )
             authoring_index += 1
-            report = await critique_agents(
-                output=agents_output, corpus=corpus, settings=settings, llm=llm
-            )
+        if agents_report is not None:
             console.print(
-                _critique_summary(report, label="AGENTS.md")
+                _refine_summary(agents_report, agents_traj, label="AGENTS.md", settings=settings)
             )
 
     if settings.generate_avatar:
@@ -280,3 +284,19 @@ def _critique_summary(report, *, label: str) -> str:  # type: ignore[no-untyped-
         f"— {highs} high, {mediums} medium issues. "
         "Full report in _workspace/."
     )
+
+
+def _refine_summary(report, trajectory, *, label: str, settings: Settings) -> str:  # type: ignore[no-untyped-def]
+    """Console summary for an authored artifact.
+
+    Single-pass critique → the plain one-line score summary. A multi-iteration
+    refine run additionally prepends the score trajectory (e.g. ``5 → 9``).
+    """
+    base = _critique_summary(report, label=label)
+    if len(trajectory) > 1:
+        arrow = " → ".join(str(s) for s in trajectory)
+        return (
+            f"[bold]{label} refinement:[/bold] {arrow} "
+            f"(bar {settings.quality_bar}/10)\n{base}"
+        )
+    return base

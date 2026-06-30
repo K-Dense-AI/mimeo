@@ -9,6 +9,8 @@ from mimeo.schemas import (
     AgentsOutput,
     ClusteredCorpus,
     ClusteredItem,
+    CritiqueIssue,
+    CritiqueReport,
     Extraction,
     Principle,
     SkillOutput,
@@ -16,8 +18,10 @@ from mimeo.schemas import (
 from mimeo.synthesize import (
     _CLUSTER_BATCH_CHARS,
     _MAX_CLUSTER_BATCHES,
+    _format_issues,
     _maybe_truncate,
     _merge_corpora,
+    _revision_addendum,
     _split_extractions_for_cluster,
     author_agents,
     author_skill,
@@ -351,3 +355,122 @@ async def test_cluster_corpus_batches_large_inputs(settings: Settings) -> None:
     assert len(llm.structured_calls) >= 2  # at least two batches ran
     # All items from the batches merged in; nothing silently dropped.
     assert len(corpus.principles) >= 2
+
+
+# ---------------------------------------------------------------------------
+# Revision-aware authoring (the refine loop's building blocks)
+# ---------------------------------------------------------------------------
+
+
+def _critique(score: int = 5, *, issues=None) -> CritiqueReport:
+    return CritiqueReport(
+        overall_score=score,
+        summary="s",
+        issues=issues
+        if issues is not None
+        else [
+            CritiqueIssue(
+                severity="high",
+                category="voice",
+                location="SKILL.md",
+                description="Reads generic.",
+                suggestion="Anchor to leverage.",
+            ),
+            CritiqueIssue(
+                severity="medium",
+                category="duplication",
+                location="references/principles.md",
+                description="Repeats idea 2.",
+            ),
+        ],
+    )
+
+
+def test_format_issues_prioritizes_high_and_medium() -> None:
+    out = _format_issues(_critique())
+    assert "[high/voice]" in out
+    assert "[medium/duplication]" in out
+    # The high issue is listed before the medium one.
+    assert out.index("[high/voice]") < out.index("[medium/duplication]")
+    assert "Suggestion: Anchor to leverage." in out
+
+
+def test_format_issues_falls_back_to_low_only() -> None:
+    report = _critique(
+        issues=[
+            CritiqueIssue(
+                severity="low",
+                category="structure",
+                location="SKILL.md",
+                description="Spacing nit.",
+            )
+        ]
+    )
+    out = _format_issues(report)
+    assert "[low/structure]" in out
+
+
+def test_format_issues_handles_no_issues() -> None:
+    out = _format_issues(_critique(score=9, issues=[]))
+    assert "No specific issues" in out
+
+
+def test_revision_addendum_embeds_issues_and_previous() -> None:
+    addendum = _revision_addendum(
+        report=_critique(score=5),
+        previous_artifact="PREVIOUS DRAFT TEXT",
+        quality_bar=8,
+    )
+    assert "Revision pass" in addendum
+    assert "PREVIOUS DRAFT TEXT" in addendum
+    assert "[high/voice]" in addendum
+    assert "5/10" in addendum and "8/10" in addendum
+
+
+@pytest.mark.asyncio
+async def test_author_skill_revision_appends_addendum_and_skips_cache(
+    settings: Settings,
+) -> None:
+    ensure_dirs(settings)
+    llm = FakeLLMClient()
+    llm.queue_structured(SkillOutput, sample_skill_output())
+
+    out = await author_skill(
+        corpus=sample_clustered_corpus(),
+        settings=settings,
+        llm=llm,
+        feedback=_critique(score=5),
+        previous_artifact="OLD SKILL BODY",
+    )
+    assert isinstance(out, SkillOutput)
+    # The revision prompt carried the editor's notes + the prior draft.
+    _schema, user, system = llm.structured_calls[0]
+    assert "Revision pass" in user
+    assert "OLD SKILL BODY" in user
+    assert "revision" in (system or "").lower()
+    # Revisions are transient: the canonical author cache is NOT written.
+    cache = settings.workspace_dir / f"skill_output.{settings.model_cache_id}.json"
+    assert not cache.exists()
+
+
+@pytest.mark.asyncio
+async def test_author_agents_revision_appends_addendum_and_skips_cache(
+    settings: Settings,
+) -> None:
+    ensure_dirs(settings)
+    llm = FakeLLMClient()
+    llm.queue_structured(AgentsOutput, sample_agents_output())
+
+    out = await author_agents(
+        corpus=sample_clustered_corpus(),
+        settings=settings,
+        llm=llm,
+        feedback=_critique(score=5),
+        previous_artifact="OLD AGENTS BODY",
+    )
+    assert isinstance(out, AgentsOutput)
+    _schema, user, _system = llm.structured_calls[0]
+    assert "Revision pass" in user
+    assert "OLD AGENTS BODY" in user
+    cache = settings.workspace_dir / f"agents_output.{settings.model_cache_id}.json"
+    assert not cache.exists()

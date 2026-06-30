@@ -22,6 +22,7 @@ from .schemas import (
     AgentsOutput,
     ClusteredCorpus,
     ClusteredItem,
+    CritiqueReport,
     Extraction,
     SkillOutput,
 )
@@ -244,9 +245,19 @@ async def author_skill(
     corpus: ClusteredCorpus,
     settings: Settings,
     llm: LLMClient,
+    feedback: CritiqueReport | None = None,
+    previous_artifact: str | None = None,
 ) -> SkillOutput:
+    """Author a SKILL.md bundle from the corpus.
+
+    On a first draft (``feedback is None``) this reads/writes the canonical
+    ``skill_output`` cache exactly as before. When ``feedback`` is supplied it
+    is a *revision* pass: the critique is appended to the prompt as editorial
+    notes, the cache is bypassed (revisions are transient — the refine loop
+    owns persistence), and the model is told to improve the prior draft.
+    """
     cache_path = settings.workspace_dir / f"skill_output.{settings.model_cache_id}.json"
-    if cache_path.exists() and not settings.refresh:
+    if feedback is None and cache_path.exists() and not settings.refresh:
         try:
             return SkillOutput.model_validate_json(cache_path.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
@@ -268,6 +279,17 @@ async def author_skill(
         "~400 lines, depth goes in references/). You never impersonate the "
         "expert - you channel their thinking. Every quote is verbatim."
     )
+    if feedback is not None:
+        prompt += "\n\n" + _revision_addendum(
+            report=feedback,
+            previous_artifact=previous_artifact or "",
+            quality_bar=settings.quality_bar,
+        )
+        system += (
+            " This is a revision: an editor reviewed your previous draft. "
+            "Address every issue they raised without regressing what works."
+        )
+
     output = await llm.structured(
         system=system,
         user=prompt,
@@ -275,7 +297,8 @@ async def author_skill(
         temperature=0.4,
         max_tokens=16_000,
     )
-    cache_path.write_text(output.model_dump_json(indent=2), encoding="utf-8")
+    if feedback is None:
+        cache_path.write_text(output.model_dump_json(indent=2), encoding="utf-8")
     return output
 
 
@@ -284,10 +307,17 @@ async def author_agents(
     corpus: ClusteredCorpus,
     settings: Settings,
     llm: LLMClient,
+    feedback: CritiqueReport | None = None,
+    previous_artifact: str | None = None,
 ) -> AgentsOutput:
-    """Author a standalone AGENTS.md (no references, no frontmatter)."""
+    """Author a standalone AGENTS.md (no references, no frontmatter).
+
+    Like :func:`author_skill`, a non-null ``feedback`` turns this into a
+    revision pass: the critique is appended as editorial notes and the cache
+    is bypassed.
+    """
     cache_path = settings.workspace_dir / f"agents_output.{settings.model_cache_id}.json"
-    if cache_path.exists() and not settings.refresh:
+    if feedback is None and cache_path.exists() and not settings.refresh:
         try:
             return AgentsOutput.model_validate_json(cache_path.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
@@ -310,6 +340,17 @@ async def author_agents(
         "impersonate the expert - you adopt their defaults. Every quote is "
         "verbatim and attributed to its source id."
     )
+    if feedback is not None:
+        prompt += "\n\n" + _revision_addendum(
+            report=feedback,
+            previous_artifact=previous_artifact or "",
+            quality_bar=settings.quality_bar,
+        )
+        system += (
+            " This is a revision: an editor reviewed your previous draft. "
+            "Address every issue they raised without regressing what works."
+        )
+
     output = await llm.structured(
         system=system,
         user=prompt,
@@ -317,7 +358,8 @@ async def author_agents(
         temperature=0.4,
         max_tokens=16_000,
     )
-    cache_path.write_text(output.model_dump_json(indent=2), encoding="utf-8")
+    if feedback is None:
+        cache_path.write_text(output.model_dump_json(indent=2), encoding="utf-8")
     return output
 
 
@@ -325,3 +367,53 @@ def _maybe_truncate(text: str, max_chars: int) -> str:
     if len(text) <= max_chars:
         return text
     return text[:max_chars] + "\n\n... [truncated for length] ..."
+
+
+# How much of the previous draft we feed back on a revision pass. Generous,
+# since targeted edits need to see what they're editing, but bounded so a
+# long bundle plus the corpus still fits.
+_REVISION_PREVIOUS_BUDGET = 40_000
+
+# Severity ordering for revision feedback: high issues lead.
+_SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
+
+
+def _format_issues(report: CritiqueReport) -> str:
+    """Render the critique's issues as a prioritized markdown list.
+
+    We surface the ship-blocking and degrading issues (``high``/``medium``)
+    so the revision focuses on what matters; if the report only carried
+    ``low`` polish notes we fall back to those rather than emit nothing.
+    """
+    issues = [i for i in report.issues if i.severity in ("high", "medium")]
+    if not issues:
+        issues = list(report.issues)
+    if not issues:
+        return (
+            "- (No specific issues were itemized — raise the overall "
+            "specificity and voice.)"
+        )
+    issues = sorted(issues, key=lambda i: _SEVERITY_ORDER.get(i.severity, 3))
+    lines: list[str] = []
+    for issue in issues:
+        lines.append(
+            f"- **[{issue.severity}/{issue.category}]** ({issue.location}) "
+            f"{issue.description}"
+        )
+        if issue.suggestion:
+            lines.append(f"  - Suggestion: {issue.suggestion}")
+    return "\n".join(lines)
+
+
+def _revision_addendum(
+    *, report: CritiqueReport, previous_artifact: str, quality_bar: int
+) -> str:
+    """Build the revision-pass addendum appended to the synthesize prompt."""
+    template = load_prompt("revision")
+    return render_prompt(
+        template,
+        prev_score=str(report.overall_score),
+        quality_bar=str(quality_bar),
+        issues=_format_issues(report),
+        previous_artifact=_maybe_truncate(previous_artifact, _REVISION_PREVIOUS_BUDGET),
+    )

@@ -51,6 +51,15 @@ class Settings:
     # Post-author: run an adversarial-editor LLM pass over the generated
     # artifact and write the critique to ``_workspace/critique_*.md``.
     critique: bool = True
+    # Close the critique loop: re-author the artifact using the critique as
+    # editorial feedback and keep iterating until it clears ``quality_bar`` or
+    # ``max_revisions`` is exhausted, keeping the best-scoring draft. On by
+    # default. ``critique`` is the master switch: ``--no-critique`` disables
+    # scoring entirely (and therefore refining too), while ``--no-refine``
+    # keeps a single critique pass without the rewrite loop.
+    refine: bool = True
+    max_revisions: int = 2
+    quality_bar: int = 8
     # Painterly portrait of the expert saved as ``avatar.<ext>`` in the
     # skill directory. Generated via an OpenRouter image model; failures
     # are logged and swallowed so a flaky image endpoint never breaks the

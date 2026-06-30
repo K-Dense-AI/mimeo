@@ -136,6 +136,37 @@ def build(
             ),
         ),
     ] = True,
+    refine: Annotated[
+        bool,
+        typer.Option(
+            "--refine/--no-refine",
+            help=(
+                "Close the critique loop: re-author using the critique as "
+                "feedback and iterate until the score clears --quality-bar or "
+                "--max-revisions runs out, keeping the best draft. On by "
+                "default; --no-refine keeps a single critique pass, "
+                "--no-critique disables scoring entirely."
+            ),
+        ),
+    ] = True,
+    max_revisions: Annotated[
+        int,
+        typer.Option(
+            "--max-revisions",
+            min=0,
+            max=5,
+            help="Max re-author passes when --refine is set (0 = critique only).",
+        ),
+    ] = 2,
+    quality_bar: Annotated[
+        int,
+        typer.Option(
+            "--quality-bar",
+            min=0,
+            max=10,
+            help="Stop refining once the critique score reaches this (0-10).",
+        ),
+    ] = 8,
     avatar: Annotated[
         bool,
         typer.Option(
@@ -178,6 +209,9 @@ def build(
         assume_unambiguous=assume_unambiguous,
         verify_quotes=verify_quotes,
         critique=critique,
+        refine=refine,
+        max_revisions=max_revisions,
+        quality_bar=quality_bar,
         generate_avatar=avatar,
         avatar_model=avatar_model,
     )
