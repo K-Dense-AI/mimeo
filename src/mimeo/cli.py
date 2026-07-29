@@ -16,8 +16,8 @@ from .config import (
     DEFAULT_AVATAR_MODEL,
     DEFAULT_MODEL,
     Format,
-    Mode,
     MissingCredentialError,
+    Mode,
     Settings,
 )
 from .identity import AmbiguousNameError
@@ -38,7 +38,9 @@ def _setup_logging(verbose: bool) -> None:
         level=level,
         format="%(message)s",
         datefmt="[%X]",
-        handlers=[RichHandler(console=console, rich_tracebacks=True, show_path=verbose)],
+        handlers=[
+            RichHandler(console=console, rich_tracebacks=True, show_path=verbose)
+        ],
     )
     # Tame noisy deps.
     for name in ("httpx", "httpcore", "openai", "urllib3", "parallel"):
@@ -47,7 +49,9 @@ def _setup_logging(verbose: bool) -> None:
 
 @app.command()
 def build(
-    expert: Annotated[str, typer.Argument(help="The expert's name, e.g. 'Naval Ravikant'.")],
+    expert: Annotated[
+        str, typer.Argument(help="The expert's name, e.g. 'Naval Ravikant'.")
+    ],
     mode: Annotated[
         Mode,
         typer.Option(
@@ -66,7 +70,10 @@ def build(
         ),
     ] = "skill",
     max_sources: Annotated[
-        int, typer.Option("--max-sources", min=1, max=200, help="Cap on sources after dedup + rank.")
+        int,
+        typer.Option(
+            "--max-sources", min=1, max=200, help="Cap on sources after dedup + rank."
+        ),
     ] = 25,
     deep_research: Annotated[
         bool,
@@ -84,7 +91,10 @@ def build(
         typer.Option("--output-dir", help="Where the generated skill directory lands."),
     ] = Path("./output"),
     concurrency: Annotated[
-        int, typer.Option("--concurrency", min=1, max=20, help="Concurrent per-source LLM calls.")
+        int,
+        typer.Option(
+            "--concurrency", min=1, max=20, help="Concurrent per-source LLM calls."
+        ),
     ] = 5,
     disambiguator: Annotated[
         str | None,
@@ -220,23 +230,23 @@ def build(
         out_path = asyncio.run(run_pipeline(settings, console=console))
     except MissingCredentialError as exc:
         console.print(f"[bold red]Missing credential:[/bold red] {exc}")
-        raise typer.Exit(code=2)
+        raise typer.Exit(code=2) from None
     except AmbiguousNameError as exc:
         console.print(f"[bold yellow]Ambiguous name.[/bold yellow]\n{exc}")
-        raise typer.Exit(code=2)
+        raise typer.Exit(code=2) from None
     except KeyboardInterrupt:
         console.print("[yellow]Cancelled.[/yellow]")
-        raise typer.Exit(code=130)
+        raise typer.Exit(code=130) from None
     except Exception as exc:  # noqa: BLE001
         console.print(f"[bold red]Pipeline failed:[/bold red] {exc}")
         if verbose:
             console.print_exception()
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     console.print(f"\n[bold green]Done.[/bold green] Output at: {out_path}")
 
 
-def main() -> None:  # convenience wrapper used by main.py
+def main() -> None:
     app()
 
 

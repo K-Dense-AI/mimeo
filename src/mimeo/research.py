@@ -8,10 +8,9 @@ is injected into the pipeline as an extra :class:`Source` with a synthetic
 
 from __future__ import annotations
 
-import json
 import logging
-from pathlib import Path
 
+from .cache import fingerprint, load_cache, store_cache
 from .config import Settings
 from .parallel_client import ParallelClient
 from .schemas import FetchedContent, Source
@@ -19,9 +18,10 @@ from .schemas import FetchedContent, Source
 logger = logging.getLogger(__name__)
 
 
-def _task_input(expert: str) -> str:
+def _task_input(expert: str, expert_description: str | None = None) -> str:
+    subject = f"{expert} ({expert_description})" if expert_description else expert
     return (
-        f"Produce a comprehensive, well-sourced synthesis of {expert}'s thought "
+        f"Produce a comprehensive, well-sourced synthesis of {subject}'s thought "
         "process, principles, frameworks, and mental models across their "
         "written and spoken work. Quote verbatim where possible and cite the "
         "original source (essay title, book, talk, or interview) for every "
@@ -41,16 +41,34 @@ async def deep_research(
     cache_dir = settings.workspace_dir / "research"
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_path = cache_dir / "report.json"
+    cache_fingerprint = fingerprint(
+        "deep-research",
+        code=2,
+        expert=settings.expert_name,
+        expert_description=settings.expert_description,
+        processor="pro-fast",
+    )
 
-    if cache_path.exists() and not settings.refresh:
-        logger.info("Using cached deep-research report from %s", cache_path)
-        return _load_from_cache(cache_path)
+    if not settings.refresh:
+        try:
+            cached = load_cache(cache_path, cache_fingerprint)
+            if cached is not None:
+                logger.info("Using cached deep-research report from %s", cache_path)
+                return _load_from_cache(cached)
+        except Exception:  # noqa: BLE001 - validation failure is a safe miss
+            logger.warning("Corrupt deep-research cache; rerunning")
 
     try:
         result = await parallel.deep_research(
-            input_text=_task_input(settings.expert_name),
+            input_text=_task_input(
+                settings.expert_name,
+                settings.expert_description,
+            ),
             processor="pro-fast",
-            metadata={"expert": settings.expert_name},
+            metadata={
+                "expert": settings.expert_name,
+                "expert_description": settings.expert_description or "",
+            },
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Deep research failed: %s", exc)
@@ -80,18 +98,17 @@ async def deep_research(
         fetch_method="parallel-deep-research",
     )
 
-    cache_path.write_text(
-        json.dumps(
-            {"source": src.model_dump(), "content": content.model_dump()},
-            indent=2,
-        ),
-        encoding="utf-8",
+    store_cache(
+        cache_path,
+        cache_fingerprint,
+        {"source": src, "content": content},
     )
     return src, content
 
 
-def _load_from_cache(path: Path) -> tuple[Source, FetchedContent]:
-    data = json.loads(path.read_text(encoding="utf-8"))
+def _load_from_cache(data: object) -> tuple[Source, FetchedContent]:
+    if not isinstance(data, dict):
+        raise ValueError("deep-research cache payload must be an object")
     return (
         Source.model_validate(data["source"]),
         FetchedContent.model_validate(data["content"]),

@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.13"
+
+      - name: Install locked dependencies
+        run: uv sync --locked --group dev
+
+      - name: Lint
+        run: uv run ruff check src tests scripts
+
+      - name: Check formatting
+        run: uv run ruff format --check src tests scripts
+
+      - name: Type check
+        run: uv run basedpyright
+
+      - name: Test with coverage
+        run: uv run pytest --cov --cov-report=term-missing
+
+      - name: Build distributions
+        run: uv build

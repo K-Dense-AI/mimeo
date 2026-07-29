@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -10,7 +12,6 @@ from mimeo.config import Settings, ensure_dirs
 from mimeo.research import _stringify_output, deep_research
 
 from .conftest import FakeParallelClient
-
 
 # ---------------------------------------------------------------------------
 # _stringify_output
@@ -33,12 +34,13 @@ def test_stringify_output_tries_alt_attrs() -> None:
 
 def test_stringify_output_dict_fallback() -> None:
     assert _stringify_output({"text": "hi"}) == "hi"
+    assert _stringify_output({"output": "via-output"}) == "via-output"
 
 
 def test_stringify_output_pydantic_dump_fallback() -> None:
     class _Obj:
         def model_dump_json(self, **_: object) -> str:
-            return "{\"dumped\": true}"
+            return '{"dumped": true}'
 
     out = _stringify_output(_Obj())
     assert "dumped" in out
@@ -75,6 +77,22 @@ async def test_deep_research_happy(settings: Settings) -> None:
 
 
 @pytest.mark.asyncio
+async def test_deep_research_includes_identity_qualifier(settings: Settings) -> None:
+    qualified = replace(settings, expert_description="the physicist, not the musician")
+    ensure_dirs(qualified)
+    parallel = FakeParallelClient(
+        deep_research_result=SimpleNamespace(
+            output=SimpleNamespace(content="Qualified synthesis.")
+        )
+    )
+
+    pair = await deep_research(settings=qualified, parallel=parallel)
+
+    assert pair is not None
+    assert "the physicist, not the musician" in parallel.deep_research_calls[0]
+
+
+@pytest.mark.asyncio
 async def test_deep_research_cache_round_trip(settings: Settings) -> None:
     ensure_dirs(settings)
     parallel = FakeParallelClient(
@@ -94,11 +112,31 @@ async def test_deep_research_cache_round_trip(settings: Settings) -> None:
 
 
 @pytest.mark.asyncio
-async def test_deep_research_returns_none_on_error(settings: Settings) -> None:
+async def test_deep_research_recovers_from_invalid_cache_payload(
+    settings: Settings,
+) -> None:
     ensure_dirs(settings)
     parallel = FakeParallelClient(
-        deep_research_raises=RuntimeError("task API down")
+        deep_research_result=SimpleNamespace(
+            output=SimpleNamespace(content="Fresh run.")
+        )
     )
+    await deep_research(settings=settings, parallel=parallel)
+    cache = settings.workspace_dir / "research" / "report.json"
+    envelope = json.loads(cache.read_text(encoding="utf-8"))
+    envelope["data"] = []
+    cache.write_text(json.dumps(envelope), encoding="utf-8")
+
+    before = len(parallel.deep_research_calls)
+    result = await deep_research(settings=settings, parallel=parallel)
+    assert result is not None and result[1].text == "Fresh run."
+    assert len(parallel.deep_research_calls) == before + 1
+
+
+@pytest.mark.asyncio
+async def test_deep_research_returns_none_on_error(settings: Settings) -> None:
+    ensure_dirs(settings)
+    parallel = FakeParallelClient(deep_research_raises=RuntimeError("task API down"))
     pair = await deep_research(settings=settings, parallel=parallel)
     assert pair is None
 
@@ -106,8 +144,6 @@ async def test_deep_research_returns_none_on_error(settings: Settings) -> None:
 @pytest.mark.asyncio
 async def test_deep_research_returns_none_on_empty_output(settings: Settings) -> None:
     ensure_dirs(settings)
-    parallel = FakeParallelClient(
-        deep_research_result=SimpleNamespace(output=None)
-    )
+    parallel = FakeParallelClient(deep_research_result=SimpleNamespace(output=None))
     pair = await deep_research(settings=settings, parallel=parallel)
     assert pair is None

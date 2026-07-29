@@ -116,7 +116,11 @@ def _render_sources_inline(sources: list[Source], *, expert: str) -> str:
     for s in sources:
         title = s.title or "(untitled)"
         bucket = f" — _{s.bucket}_" if s.bucket else ""
-        score = f" (score {s.canonicity_score:.2f})" if s.canonicity_score is not None else ""
+        score = (
+            f" (score {s.canonicity_score:.2f})"
+            if s.canonicity_score is not None
+            else ""
+        )
         date = f" [{s.publish_date}]" if s.publish_date else ""
         lines.append(f"- **{s.id}**{bucket}{score}: [{title}]({s.url}){date}")
     return "\n".join(lines)
@@ -151,7 +155,11 @@ def _render_sources(sources: list[Source], *, expert: str) -> str:
     for s in sources:
         title = s.title or "(untitled)"
         bucket = f" — _{s.bucket}_" if s.bucket else ""
-        score = f" (score {s.canonicity_score:.2f})" if s.canonicity_score is not None else ""
+        score = (
+            f" (score {s.canonicity_score:.2f})"
+            if s.canonicity_score is not None
+            else ""
+        )
         date = f" [{s.publish_date}]" if s.publish_date else ""
         lines.append(f"- **{s.id}**{bucket}{score}: [{title}]({s.url}){date}")
     lines.append("")

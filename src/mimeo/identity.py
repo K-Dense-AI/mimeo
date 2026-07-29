@@ -25,6 +25,7 @@ from dataclasses import replace
 
 from rich.console import Console
 
+from .cache import fingerprint, load_cache, schema_digest, store_cache
 from .config import Settings
 from .llm import LLMClient
 from .parallel_client import ParallelClient
@@ -80,15 +81,22 @@ async def resolve_identity(
         )
         return settings
 
-    cache_path = settings.workspace_dir / f"identity.{settings.model_cache_id}.json"
+    cache_path = settings.workspace_dir / "identity.json"
+    cache_fingerprint = fingerprint(
+        "identity",
+        code=2,
+        expert=settings.expert_name,
+        model=settings.model,
+        schema=schema_digest(IdentityResolution),
+    )
     resolution: IdentityResolution | None = None
-    if cache_path.exists() and not settings.refresh:
+    if not settings.refresh:
         try:
-            resolution = IdentityResolution.model_validate_json(
-                cache_path.read_text(encoding="utf-8")
-            )
-            logger.info("Using cached identity resolution from %s", cache_path)
-        except Exception:  # noqa: BLE001
+            cached = load_cache(cache_path, cache_fingerprint)
+            if cached is not None:
+                resolution = IdentityResolution.model_validate(cached)
+                logger.info("Using cached identity resolution from %s", cache_path)
+        except Exception:  # noqa: BLE001 - validation failure is a safe miss
             logger.warning("Corrupt identity cache; re-resolving")
             resolution = None
 
@@ -97,15 +105,18 @@ async def resolve_identity(
             console.print(
                 f"[dim]Resolving identity for '{settings.expert_name}'...[/dim]"
             )
-        resolution = await _classify(
-            settings=settings, parallel=parallel, llm=llm
-        )
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        cache_path.write_text(
-            resolution.model_dump_json(indent=2), encoding="utf-8"
-        )
+        resolution = await _classify(settings=settings, parallel=parallel, llm=llm)
+        store_cache(cache_path, cache_fingerprint, resolution)
 
-    return _apply_resolution(settings, resolution, console=console)
+    resolved_settings = _apply_resolution(settings, resolution, console=console)
+    if resolution.is_ambiguous and resolved_settings.expert_description:
+        persisted = IdentityResolution(
+            is_ambiguous=False,
+            resolved_description=resolved_settings.expert_description,
+            notes="Persisted interactive user selection.",
+        )
+        store_cache(cache_path, cache_fingerprint, persisted)
+    return resolved_settings
 
 
 def _apply_resolution(
@@ -117,13 +128,10 @@ def _apply_resolution(
     if not resolution.is_ambiguous:
         description = resolution.resolved_description
         if description:
-            logger.info(
-                "Identity resolved: %s (%s)", settings.expert_name, description
-            )
+            logger.info("Identity resolved: %s (%s)", settings.expert_name, description)
             if console is not None:
                 console.print(
-                    f"[green]Resolved[/green] '{settings.expert_name}' → "
-                    f"{description}"
+                    f"[green]Resolved[/green] '{settings.expert_name}' → {description}"
                 )
             return replace(settings, expert_description=description)
         # Unambiguous but no description (e.g. zero search evidence).

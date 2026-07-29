@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -82,7 +82,7 @@ async def test_unambiguous_resolution_attaches_description(tmp_path: Path) -> No
     assert len(parallel.search_calls) == 1
     assert len(llm.structured_calls) == 1
     # Cache file was written for next run.
-    cache = s.workspace_dir / f"identity.{s.model_cache_id}.json"
+    cache = s.workspace_dir / "identity.json"
     assert cache.exists()
 
 
@@ -143,15 +143,21 @@ async def test_empty_search_evidence_is_unambiguous(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_cache_short_circuits_second_call(tmp_path: Path) -> None:
     s = _settings(tmp_path, expert_name="Naval Ravikant")
-    cache = s.workspace_dir / f"identity.{s.model_cache_id}.json"
-    cache.write_text(
+    parallel = FakeParallelClient(
+        default_search=make_search_result(
+            [{"url": "https://example.com/naval", "title": "Naval Ravikant"}]
+        )
+    )
+    seeded_llm = FakeLLMClient()
+    seeded_llm.queue_structured(
+        IdentityResolution,
         IdentityResolution(
             is_ambiguous=False,
             resolved_description="co-founder of AngelList",
-        ).model_dump_json(),
-        encoding="utf-8",
+        ),
     )
-    parallel = FakeParallelClient()
+    await resolve_identity(settings=s, parallel=parallel, llm=seeded_llm)
+    parallel.search_calls.clear()
     llm = FakeLLMClient()
 
     out = await resolve_identity(settings=s, parallel=parallel, llm=llm)
@@ -164,7 +170,7 @@ async def test_cache_short_circuits_second_call(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_refresh_bypasses_identity_cache(tmp_path: Path) -> None:
     s = _settings(tmp_path, expert_name="Naval Ravikant", refresh=True)
-    cache = s.workspace_dir / f"identity.{s.model_cache_id}.json"
+    cache = s.workspace_dir / "identity.json"
     # Stale cache that should be ignored.
     cache.write_text(
         IdentityResolution(
@@ -206,8 +212,6 @@ def test_ambiguous_name_error_lists_candidates() -> None:
 # ---------------------------------------------------------------------------
 
 
-import sys  # noqa: E402
-
 from rich.console import Console  # noqa: E402
 
 from mimeo.identity import _apply_resolution, _prompt_choice  # noqa: E402
@@ -216,8 +220,21 @@ from mimeo.identity import _apply_resolution, _prompt_choice  # noqa: E402
 @pytest.mark.asyncio
 async def test_resolve_identity_recovers_from_corrupt_cache(tmp_path: Path) -> None:
     s = _settings(tmp_path, expert_name="Naval")
-    cache = s.workspace_dir / f"identity.{s.model_cache_id}.json"
-    cache.write_text("not valid json", encoding="utf-8")
+    cache = s.workspace_dir / "identity.json"
+    seeded_parallel = FakeParallelClient(
+        default_search=make_search_result(
+            [{"url": "https://x.com", "title": "t", "excerpts": ["e"]}]
+        )
+    )
+    seeded_llm = FakeLLMClient()
+    seeded_llm.queue_structured(
+        IdentityResolution,
+        IdentityResolution(is_ambiguous=False, resolved_description="initial"),
+    )
+    await resolve_identity(settings=s, parallel=seeded_parallel, llm=seeded_llm)
+    envelope = json.loads(cache.read_text(encoding="utf-8"))
+    envelope["data"] = {}
+    cache.write_text(json.dumps(envelope), encoding="utf-8")
 
     parallel = FakeParallelClient(
         default_search=make_search_result(
@@ -247,7 +264,9 @@ async def test_resolve_identity_prints_progress_with_console(tmp_path: Path) -> 
         IdentityResolution(is_ambiguous=False, resolved_description="q"),
     )
     console = Console(record=True, width=120)
-    out = await resolve_identity(settings=s, parallel=parallel, llm=llm, console=console)
+    out = await resolve_identity(
+        settings=s, parallel=parallel, llm=llm, console=console
+    )
     assert out.expert_description == "q"
     rendered = console.export_text()
     assert "Resolving identity" in rendered
@@ -283,6 +302,51 @@ def test_apply_resolution_ambiguous_with_tty_picks(
         console=Console(record=True, width=120),
     )
     assert out.expert_description == "second"
+
+
+@pytest.mark.asyncio
+async def test_interactive_pick_is_persisted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    s = _settings(tmp_path, expert_name="John Smith")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("rich.prompt.IntPrompt.ask", lambda *_a, **_kw: 2)
+    resolution = IdentityResolution(
+        is_ambiguous=True,
+        candidates=[
+            ExpertCandidate(name="A", description="first"),
+            ExpertCandidate(name="B", description="second"),
+        ],
+    )
+    parallel = FakeParallelClient(
+        default_search=make_search_result(
+            [{"url": "https://example.com/john", "title": "John Smith"}]
+        )
+    )
+    llm = FakeLLMClient()
+    llm.queue_structured(IdentityResolution, resolution)
+    console = Console(record=True, width=120)
+
+    first = await resolve_identity(
+        settings=s,
+        parallel=parallel,
+        llm=llm,
+        console=console,
+    )
+    assert first.expert_description == "second"
+
+    fresh_parallel = FakeParallelClient()
+    fresh_llm = FakeLLMClient()
+    second = await resolve_identity(
+        settings=s,
+        parallel=fresh_parallel,
+        llm=fresh_llm,
+        console=console,
+    )
+    assert second.expert_description == "second"
+    assert fresh_parallel.search_calls == []
+    assert fresh_llm.structured_calls == []
 
 
 def test_apply_resolution_ambiguous_no_console_raises(

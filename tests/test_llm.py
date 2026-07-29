@@ -96,13 +96,16 @@ def test_is_network_retryable_matrix() -> None:
     req = _make_httpx_request()
     assert _is_network_retryable(APIConnectionError(request=req)) is True
     assert _is_network_retryable(APITimeoutError(request=req)) is True
-    assert _is_network_retryable(
-        RateLimitError(
-            message="rate limit",
-            response=httpx.Response(429, request=req),
-            body=None,
+    assert (
+        _is_network_retryable(
+            RateLimitError(
+                message="rate limit",
+                response=httpx.Response(429, request=req),
+                body=None,
+            )
         )
-    ) is True
+        is True
+    )
     assert _is_network_retryable(_status_error(500)) is True
     assert _is_network_retryable(_status_error(503)) is True
     # 4xx errors other than 408/409/425/429 should NOT retry.
@@ -161,7 +164,9 @@ async def test_complete_omits_system_when_none() -> None:
 
 
 @pytest.mark.asyncio
-async def test_complete_retries_transient_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_complete_retries_transient_then_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     client = LLMClient()
     req = _make_httpx_request()
     scripted = _install_scripted(
@@ -213,7 +218,9 @@ async def test_structured_strips_code_fences() -> None:
 
 
 @pytest.mark.asyncio
-async def test_structured_repairs_on_invalid_json(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_structured_repairs_on_invalid_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """First reply is garbage, second reply is valid - the repair loop wins."""
     client = LLMClient()
     scripted = _install_scripted(
@@ -258,14 +265,16 @@ async def test_structured_gives_up_after_max_repairs() -> None:
             _make_completion("junk-3"),
         ],
     )
-    with pytest.raises(Exception):
+    with pytest.raises(json.JSONDecodeError):
         await client.structured(system=None, user="u", schema=_ToyModel)
     # _SCHEMA_REPAIR_ATTEMPTS = 3, so we expect 3 completion calls.
     assert len(scripted.calls) == 3
 
 
 @pytest.mark.asyncio
-async def test_structured_retries_network_before_parsing(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_structured_retries_network_before_parsing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     client = LLMClient()
     req = _make_httpx_request()
     _install_scripted(

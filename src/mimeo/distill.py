@@ -14,10 +14,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
 
+from .cache import fingerprint, load_cache, prompt_digest, schema_digest, store_cache
 from .config import Settings
 from .llm import LLMClient, load_prompt, render_prompt
+from .prompt_safety import sanitize_prompt_metadata, wrap_untrusted_block
 from .schemas import (
     AntiPattern,
     Extraction,
@@ -58,17 +59,31 @@ async def distill_all(
     distilled_dir = settings.workspace_dir / "distilled"
     sem = asyncio.Semaphore(settings.concurrency)
     template = load_prompt("extract")
-    model_tag = settings.model_cache_id
+    extract_prompt_digest = prompt_digest("extract")
+    extraction_schema_digest = schema_digest(Extraction)
 
     async def _task(fc: FetchedContent) -> Extraction | None:
         source = by_id.get(fc.source_id)
         if source is None:
             return None
-        cache = distilled_dir / f"{source.id}.{model_tag}.json"
-        if cache.exists() and not settings.refresh:
+        cache = distilled_dir / f"{source.id}.json"
+        cache_fingerprint = fingerprint(
+            "distill",
+            code=2,
+            expert=settings.expert_name,
+            expert_description=settings.expert_description,
+            model=settings.model,
+            prompt=extract_prompt_digest,
+            schema=extraction_schema_digest,
+            source=source,
+            fetched=fc,
+        )
+        if not settings.refresh:
             try:
-                return Extraction.model_validate_json(cache.read_text(encoding="utf-8"))
-            except Exception:  # noqa: BLE001
+                cached = load_cache(cache, cache_fingerprint)
+                if cached is not None:
+                    return Extraction.model_validate(cached)
+            except Exception:  # noqa: BLE001 - validation failure is a safe miss
                 logger.warning("Corrupt cache for %s; re-distilling", source.id)
 
         extraction = await _distill_one(
@@ -81,7 +96,7 @@ async def distill_all(
             sem=sem,
         )
         if extraction is not None:
-            cache.write_text(extraction.model_dump_json(indent=2), encoding="utf-8")
+            store_cache(cache, cache_fingerprint, extraction)
         return extraction
 
     results = await asyncio.gather(*(_task(fc) for fc in fetched))
@@ -176,11 +191,18 @@ async def _distill_chunk(
         template,
         expert=expert,
         expert_context=expert_context,
-        source_id=source.id,
-        title=fetched.title or source.title or "(untitled)",
-        url=source.url,
-        kind=source.kind,
-        content=body,
+        source_id=sanitize_prompt_metadata(source.id),
+        title=sanitize_prompt_metadata(fetched.title or source.title or "(untitled)"),
+        url=sanitize_prompt_metadata(source.url),
+        kind=sanitize_prompt_metadata(source.kind),
+        content=wrap_untrusted_block(
+            "source_content",
+            body,
+            attributes={
+                "source_id": source.id,
+                "url": source.url,
+            },
+        ),
     )
 
     system = (

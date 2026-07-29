@@ -14,15 +14,13 @@ wheels/
 # Secrets
 .env
 
-# Generated skills + workspace artifacts
-scripts/
+# Generated skills are a tracked product gallery. Only local intermediates
+# inside each generated skill are ignored.
 logs/
 *_workspace/
 
-# uv
-uv.lock
+# uv.lock and .python-version are tracked for reproducible installs.
 uv.lock.backup
-.python-version
 
 # Editors
 .DS_Store

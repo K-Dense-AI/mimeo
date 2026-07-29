@@ -13,6 +13,7 @@ so a flaky image endpoint never breaks the main pipeline.
 from __future__ import annotations
 
 import base64
+import binascii
 import logging
 import re
 from pathlib import Path
@@ -42,18 +43,25 @@ _AVATAR_PROMPT_TEMPLATE = (
 
 
 def _build_prompt(settings: Settings) -> str:
-    context = (
-        f" ({settings.expert_description})" if settings.expert_description else ""
-    )
-    return _AVATAR_PROMPT_TEMPLATE.format(
-        expert=settings.expert_name, context=context
-    )
+    context = f" ({settings.expert_description})" if settings.expert_description else ""
+    return _AVATAR_PROMPT_TEMPLATE.format(expert=settings.expert_name, context=context)
 
 
 # Matches ``data:image/png;base64,AAAA...`` (or jpeg/webp/gif). We keep the
 # extension to write the file with the right suffix rather than always
 # forcing ``.png`` on a jpeg payload.
-_DATA_URL_RE = re.compile(r"^data:image/(?P<ext>[\w+-]+);base64,(?P<b64>.+)$", re.DOTALL)
+_DATA_URL_RE = re.compile(
+    r"^data:image/(?P<ext>[\w+-]+);base64,(?P<b64>.+)$", re.DOTALL
+)
+_ALLOWED_IMAGE_TYPES = {
+    "gif": "gif",
+    "jpeg": "jpg",
+    "jpg": "jpg",
+    "png": "png",
+    "webp": "webp",
+}
+_MAX_AVATAR_BYTES = 5 * 1024 * 1024
+_MAX_AVATAR_B64_CHARS = ((_MAX_AVATAR_BYTES + 2) // 3) * 4
 
 
 def _extract_image(body: dict[str, Any]) -> tuple[bytes, str] | None:
@@ -77,10 +85,17 @@ def _extract_image(body: dict[str, Any]) -> tuple[bytes, str] | None:
             continue
         match = _DATA_URL_RE.match(url)
         if match:
-            try:
-                return base64.b64decode(match.group("b64")), match.group("ext")
-            except (ValueError, TypeError):
+            ext = _ALLOWED_IMAGE_TYPES.get(match.group("ext").lower())
+            encoded = match.group("b64")
+            if ext is None or len(encoded) > _MAX_AVATAR_B64_CHARS:
                 continue
+            try:
+                image_bytes = base64.b64decode(encoded, validate=True)
+            except (ValueError, TypeError, binascii.Error):
+                continue
+            if len(image_bytes) > _MAX_AVATAR_BYTES:
+                continue
+            return image_bytes, ext
     return None
 
 

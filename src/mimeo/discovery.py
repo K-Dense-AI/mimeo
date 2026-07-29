@@ -14,10 +14,12 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+from .cache import fingerprint, load_cache, schema_digest, store_cache
 from .config import Settings
 from .llm import LLMClient
 from .parallel_client import ParallelClient
-from .schemas import RankedSources, Source, SourceKind
+from .schemas import RankedSources, Source, SourceKind, SourceMedium
+from .url_safety import UrlSafetyError, validate_public_http_url
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +44,8 @@ BUCKETS: tuple[Bucket, ...] = (
             "Exclude content by other people who happen to share this name."
         ),
         search_queries_template=(
-            '{expert} essay',
-            '{expert} blog post',
+            "{expert} essay",
+            "{expert} blog post",
             '"{expert}" article site:substack.com OR site:medium.com',
         ),
         kind="essay",
@@ -59,9 +61,9 @@ BUCKETS: tuple[Bucket, ...] = (
             "people who happen to share this name."
         ),
         search_queries_template=(
-            '{expert} talk site:youtube.com',
-            '{expert} keynote',
-            '{expert} lecture',
+            "{expert} talk site:youtube.com",
+            "{expert} keynote",
+            "{expert} lecture",
             '{expert} "nobel lecture" OR commencement',
         ),
         kind="talk",
@@ -75,9 +77,9 @@ BUCKETS: tuple[Bucket, ...] = (
             "this name."
         ),
         search_queries_template=(
-            '{expert} interview',
-            '{expert} transcript interview',
-            '{expert} conversation with',
+            "{expert} interview",
+            "{expert} transcript interview",
+            "{expert} conversation with",
         ),
         kind="interview",
     ),
@@ -89,8 +91,8 @@ BUCKETS: tuple[Bucket, ...] = (
             "episodes featuring other people who happen to share this name."
         ),
         search_queries_template=(
-            '{expert} podcast',
-            '{expert} podcast transcript',
+            "{expert} podcast",
+            "{expert} podcast transcript",
             '{expert} "podcast episode"',
         ),
         kind="podcast",
@@ -104,9 +106,9 @@ BUCKETS: tuple[Bucket, ...] = (
             "other people who happen to share this name."
         ),
         search_queries_template=(
-            '{expert} principles',
-            '{expert} framework',
-            '{expert} mental models',
+            "{expert} principles",
+            "{expert} framework",
+            "{expert} mental models",
         ),
         kind="other",
     ),
@@ -118,9 +120,9 @@ BUCKETS: tuple[Bucket, ...] = (
             "books by other people who happen to share this name."
         ),
         search_queries_template=(
-            '{expert} book',
-            '{expert} book summary chapter',
-            '{expert} author',
+            "{expert} book",
+            "{expert} book summary chapter",
+            "{expert} author",
         ),
         kind="book",
     ),
@@ -136,10 +138,10 @@ BUCKETS: tuple[Bucket, ...] = (
             "name."
         ),
         search_queries_template=(
-            '{expert} paper',
-            '{expert} site:arxiv.org OR site:biorxiv.org OR site:pubmed.ncbi.nlm.nih.gov',
+            "{expert} paper",
+            "{expert} site:arxiv.org OR site:biorxiv.org OR site:pubmed.ncbi.nlm.nih.gov",
             '{expert} "published in" OR "journal of"',
-            '{expert} scholar citations',
+            "{expert} scholar citations",
         ),
         kind="paper",
     ),
@@ -155,10 +157,10 @@ BUCKETS: tuple[Bucket, ...] = (
             "people who happen to share this name."
         ),
         search_queries_template=(
-            '{expert} letters correspondence',
+            "{expert} letters correspondence",
             '{expert} "collected letters" OR "selected letters"',
-            '{expert} notebooks archive',
-            '{expert} letter to',
+            "{expert} notebooks archive",
+            "{expert} letter to",
         ),
         kind="letter",
     ),
@@ -173,17 +175,30 @@ async def discover_sources(
 ) -> list[Source]:
     """Run the full discovery stage."""
 
-    # The ranking step is LLM-driven, so scope it by model. Raw per-bucket
-    # search results (from Parallel Search) remain model-agnostic and reusable.
-    cache_path = (
-        settings.workspace_dir
-        / "discovery"
-        / f"ranked_sources.{settings.model_cache_id}.json"
+    cache_path = settings.workspace_dir / "discovery" / "ranked_sources.json"
+    ranked_fingerprint = fingerprint(
+        "discovery-ranked",
+        code=2,
+        expert=settings.expert_name,
+        expert_description=settings.expert_description,
+        max_sources=settings.max_sources,
+        model=settings.model,
+        schema=schema_digest(RankedSources, Source),
     )
-    if cache_path.exists() and not settings.refresh:
-        logger.info("Using cached ranked sources from %s", cache_path)
-        data = json.loads(cache_path.read_text(encoding="utf-8"))
-        return [Source.model_validate(s) for s in data]
+    if not settings.refresh:
+        try:
+            data = load_cache(cache_path, ranked_fingerprint)
+            if data is not None:
+                logger.info("Using cached ranked sources from %s", cache_path)
+                return [
+                    source
+                    for item in data
+                    if _source_url_is_safe(
+                        source := Source.model_validate(item),
+                    )
+                ]
+        except Exception:  # noqa: BLE001 - validation failure is a safe miss
+            logger.warning("Corrupt ranked-source cache; rediscovering")
 
     raw_sources = await _run_all_buckets(
         expert=settings.expert_name,
@@ -192,7 +207,9 @@ async def discover_sources(
         workspace=settings.workspace_dir / "discovery",
         refresh=settings.refresh,
     )
-    logger.info("Discovered %d raw sources across %d buckets", len(raw_sources), len(BUCKETS))
+    logger.info(
+        "Discovered %d raw sources across %d buckets", len(raw_sources), len(BUCKETS)
+    )
 
     merged = _merge_and_dedupe(raw_sources)
     logger.info("%d unique sources after dedup", len(merged))
@@ -206,10 +223,7 @@ async def discover_sources(
     )
     logger.info("Kept top %d sources after ranking", len(ranked))
 
-    cache_path.write_text(
-        json.dumps([s.model_dump() for s in ranked], indent=2),
-        encoding="utf-8",
-    )
+    store_cache(cache_path, ranked_fingerprint, ranked)
     return ranked
 
 
@@ -253,9 +267,31 @@ async def _run_bucket(
     refresh: bool,
 ) -> list[Source]:
     cache = workspace / f"{bucket.name}.json"
-    if cache.exists() and not refresh:
-        data = json.loads(cache.read_text(encoding="utf-8"))
-        return [Source.model_validate(s) for s in data]
+    cache_fingerprint = fingerprint(
+        "discovery-bucket",
+        code=2,
+        expert=expert,
+        expert_description=expert_description,
+        bucket={
+            "name": bucket.name,
+            "objective_template": bucket.objective_template,
+            "search_queries_template": bucket.search_queries_template,
+            "kind": bucket.kind,
+        },
+    )
+    if not refresh:
+        try:
+            data = load_cache(cache, cache_fingerprint)
+            if data is not None:
+                return [
+                    source
+                    for item in data
+                    if _source_url_is_safe(
+                        source := Source.model_validate(item),
+                    )
+                ]
+        except Exception:  # noqa: BLE001 - validation failure is a safe miss
+            logger.warning("Corrupt discovery cache for %s; re-searching", bucket.name)
 
     # The qualifier anchors Parallel's objective to the right person when the
     # name itself is ambiguous. Search queries stay as bare keywords so we
@@ -276,10 +312,16 @@ async def _run_bucket(
     for idx, r in enumerate(result.results or []):
         if not r.url:
             continue
+        url = str(r.url)
+        try:
+            validate_public_http_url(url)
+        except UrlSafetyError as exc:
+            logger.warning("Skipping unsafe discovery URL %s: %s", url, exc)
+            continue
         sources.append(
             Source(
                 id=f"{bucket.name}_{idx:03d}",
-                url=str(r.url),
+                url=url,
                 title=r.title,
                 publish_date=str(r.publish_date) if r.publish_date else None,
                 kind=bucket.kind,
@@ -289,19 +331,28 @@ async def _run_bucket(
             )
         )
 
-    cache.write_text(
-        json.dumps([s.model_dump() for s in sources], indent=2),
-        encoding="utf-8",
-    )
+    store_cache(cache, cache_fingerprint, sources)
     logger.info("Bucket %s: %d sources", bucket.name, len(sources))
     return sources
 
 
-def _guess_medium(url: str) -> str:
+def _source_url_is_safe(source: Source) -> bool:
+    try:
+        validate_public_http_url(source.url)
+    except UrlSafetyError as exc:
+        logger.warning("Ignoring unsafe cached source URL %s: %s", source.url, exc)
+        return False
+    return True
+
+
+def _guess_medium(url: str) -> SourceMedium:
     lowered = url.lower()
     if "youtube.com/watch" in lowered or "youtu.be/" in lowered:
         return "youtube"
-    if any(s in lowered for s in (".mp3", ".m4a", "podcasts.apple.com", "spotify.com/episode")):
+    if any(
+        s in lowered
+        for s in (".mp3", ".m4a", "podcasts.apple.com", "spotify.com/episode")
+    ):
         return "audio"
     return "web"
 
@@ -361,7 +412,9 @@ async def _rank_and_trim(
     llm: LLMClient,
 ) -> list[Source]:
     if len(sources) <= target:
-        logger.info("Skipping rank: already at/below target (%d <= %d)", len(sources), target)
+        logger.info(
+            "Skipping rank: already at/below target (%d <= %d)", len(sources), target
+        )
         return sources
 
     # We feed the LLM a compact table - just the fields it needs to judge.
@@ -418,9 +471,7 @@ async def _rank_and_trim(
             continue
         seen.add(ranked.id)
         ordered.append(
-            original.model_copy(
-                update={"canonicity_score": ranked.canonicity_score}
-            )
+            original.model_copy(update={"canonicity_score": ranked.canonicity_score})
         )
         if len(ordered) >= target:
             break

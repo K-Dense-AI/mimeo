@@ -5,20 +5,19 @@ from __future__ import annotations
 import asyncio
 import sys
 import types
+from dataclasses import replace
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
+from mimeo.cache import fingerprint, load_cache, store_cache
 from mimeo.config import Settings, ensure_dirs
 from mimeo.fetchers import fetch_all, fetch_one
-from mimeo.fetchers.dispatcher import fetch_all as _fetch_all
-from mimeo.fetchers.web import _MIN_CHARS, _TARGET_CHARS, fetch_web
+from mimeo.fetchers.web import _MIN_CHARS, fetch_web
 from mimeo.fetchers.youtube import extract_video_id, fetch_youtube_captions
 from mimeo.schemas import FetchedContent, Source
 
 from .conftest import FakeParallelClient, make_extract_response
-
 
 # ---------------------------------------------------------------------------
 # fetch_web
@@ -67,7 +66,9 @@ async def test_fetch_web_extract_uses_excerpts_if_no_full_content() -> None:
 
 
 @pytest.mark.asyncio
-async def test_fetch_web_falls_back_to_trafilatura(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_fetch_web_falls_back_to_trafilatura(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     src = Source(id="src_000", url="https://example.com/e", bucket="essays")
     # Extract returns nothing usable.
     parallel = FakeParallelClient(extract_result=make_extract_response(full_content=""))
@@ -110,7 +111,7 @@ async def test_fetch_web_trafilatura_timeout_falls_back_to_excerpts(
 
     async def _slow_wait_for(coro, timeout: float):  # type: ignore[no-redef]
         coro.close()
-        raise asyncio.TimeoutError()
+        raise TimeoutError()
 
     monkeypatch.setattr(asyncio, "wait_for", _slow_wait_for)
     out = await fetch_web(src, parallel)
@@ -122,7 +123,9 @@ async def test_fetch_web_trafilatura_timeout_falls_back_to_excerpts(
 async def test_fetch_web_trafilatura_exception_falls_back(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    src = Source(id="src_000", url="https://example.com/e", bucket="essays", excerpts=["x"])
+    src = Source(
+        id="src_000", url="https://example.com/e", bucket="essays", excerpts=["x"]
+    )
     parallel = FakeParallelClient(extract_result=make_extract_response(full_content=""))
     monkeypatch.setattr(
         "mimeo.fetchers.web._trafilatura_fetch",
@@ -137,14 +140,17 @@ def test_trafilatura_fetch_returns_none_when_nothing_downloaded(
 ) -> None:
     from mimeo.fetchers.web import _trafilatura_fetch
 
-    monkeypatch.setattr("mimeo.fetchers.web.trafilatura.fetch_url", lambda url: None)
+    monkeypatch.setattr("mimeo.fetchers.web.safe_http_get", lambda *_a, **_kw: b"")
     assert _trafilatura_fetch("https://x") is None
 
 
 def test_trafilatura_fetch_returns_extracted(monkeypatch: pytest.MonkeyPatch) -> None:
     from mimeo.fetchers.web import _trafilatura_fetch
 
-    monkeypatch.setattr("mimeo.fetchers.web.trafilatura.fetch_url", lambda url: "raw-html")
+    monkeypatch.setattr(
+        "mimeo.fetchers.web.safe_http_get",
+        lambda *_a, **_kw: b"raw-html",
+    )
     monkeypatch.setattr(
         "mimeo.fetchers.web.trafilatura.extract", lambda *_a, **_kw: "parsed"
     )
@@ -164,6 +170,7 @@ def test_extract_video_id_variants() -> None:
     assert extract_video_id("https://youtube.com/embed/xyz") == "xyz"
     assert extract_video_id("https://youtube.com/live/xyz") == "xyz"
     assert extract_video_id("https://example.com/x") is None
+    assert extract_video_id("https://evil-youtube.com/watch?v=abc") is None
 
 
 class _FakeSnippet:
@@ -179,7 +186,9 @@ class _FakeFetched:
 
 @pytest.mark.asyncio
 async def test_fetch_youtube_captions_happy(monkeypatch: pytest.MonkeyPatch) -> None:
-    src = Source(id="src_yt", url="https://youtu.be/abc", bucket="talks", medium="youtube")
+    src = Source(
+        id="src_yt", url="https://youtu.be/abc", bucket="talks", medium="youtube"
+    )
 
     class _FakeApi:
         def fetch(self, video_id: str, **_: object) -> _FakeFetched:
@@ -205,7 +214,9 @@ async def test_fetch_youtube_captions_no_video_id() -> None:
 async def test_fetch_youtube_captions_falls_back_to_track_list(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    src = Source(id="src_yt", url="https://youtu.be/abc", bucket="talks", medium="youtube")
+    src = Source(
+        id="src_yt", url="https://youtu.be/abc", bucket="talks", medium="youtube"
+    )
 
     class _Track:
         def __init__(self, ok: bool, text: str = "") -> None:
@@ -237,7 +248,9 @@ async def test_fetch_youtube_captions_reraises_when_all_tracks_fail(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """api.list returns tracks but each .fetch() raises - we fall through to raise."""
-    src = Source(id="src_yt", url="https://youtu.be/abc", bucket="talks", medium="youtube")
+    src = Source(
+        id="src_yt", url="https://youtu.be/abc", bucket="talks", medium="youtube"
+    )
 
     class _Track:
         def fetch(self) -> _FakeFetched:
@@ -294,13 +307,17 @@ async def test_fetch_youtube_captions_returns_empty_on_total_failure(
 def _install_fake_yt_dlp(
     monkeypatch: pytest.MonkeyPatch, *, raise_on_download: bool = False
 ) -> None:
+    monkeypatch.setattr(
+        "mimeo.url_safety.resolve_public_host",
+        lambda *_a, **_kw: ("93.184.216.34",),
+    )
     module = types.ModuleType("yt_dlp")
 
     class _FakeYDL:
         def __init__(self, opts: dict) -> None:
             self.opts = opts
 
-        def __enter__(self) -> "_FakeYDL":
+        def __enter__(self) -> _FakeYDL:
             return self
 
         def __exit__(self, *_: object) -> None:
@@ -346,6 +363,7 @@ def _install_fake_whisper(
 
     module.WhisperModel = _WhisperModel  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "faster_whisper", module)
+    monkeypatch.setattr("mimeo.fetchers.audio._whisper_model", None)
 
 
 @pytest.mark.asyncio
@@ -354,10 +372,38 @@ async def test_fetch_audio_happy(monkeypatch: pytest.MonkeyPatch) -> None:
 
     _install_fake_yt_dlp(monkeypatch)
     _install_fake_whisper(monkeypatch, text="the-transcript")
-    src = Source(id="src_a", url="https://x.com/a.mp3", bucket="podcasts", medium="audio")
+    src = Source(
+        id="src_a", url="https://x.com/a.mp3", bucket="podcasts", medium="audio"
+    )
     out = await fetch_audio(src)
     assert out.fetch_method == "whisper"
     assert "the-transcript" in out.text
+
+
+def test_whisper_model_is_reused(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mimeo.fetchers.audio import _transcribe
+
+    created = 0
+    module = types.ModuleType("faster_whisper")
+
+    class _Segment:
+        text = "transcribed"
+
+    class _WhisperModel:
+        def __init__(self, *_a: object, **_kw: object) -> None:
+            nonlocal created
+            created += 1
+
+        def transcribe(self, path: str, **_: object):
+            return [_Segment()], None
+
+    module.WhisperModel = _WhisperModel  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "faster_whisper", module)
+    monkeypatch.setattr("mimeo.fetchers.audio._whisper_model", None)
+
+    assert _transcribe(Path("one.mp3")) == "transcribed"
+    assert _transcribe(Path("two.mp3")) == "transcribed"
+    assert created == 1
 
 
 @pytest.mark.asyncio
@@ -384,13 +430,17 @@ async def test_fetch_audio_mp3_missing_falls_back_to_raw_filename(
     """If postprocess didn't produce a ``.mp3``, use the raw download filename."""
     from mimeo.fetchers.audio import fetch_audio
 
+    monkeypatch.setattr(
+        "mimeo.url_safety.resolve_public_host",
+        lambda *_a, **_kw: ("93.184.216.34",),
+    )
     module = types.ModuleType("yt_dlp")
 
     class _FakeYDL:
         def __init__(self, opts: dict) -> None:
             self.opts = opts
 
-        def __enter__(self) -> "_FakeYDL":
+        def __enter__(self) -> _FakeYDL:
             return self
 
         def __exit__(self, *_: object) -> None:
@@ -411,18 +461,24 @@ async def test_fetch_audio_mp3_missing_falls_back_to_raw_filename(
     monkeypatch.setitem(sys.modules, "yt_dlp", module)
     _install_fake_whisper(monkeypatch, text="fallback-transcript")
 
-    src = Source(id="src_a", url="https://x.com/a.webm", bucket="podcasts", medium="audio")
+    src = Source(
+        id="src_a", url="https://x.com/a.webm", bucket="podcasts", medium="audio"
+    )
     out = await fetch_audio(src)
     assert "fallback-transcript" in out.text
 
 
 @pytest.mark.asyncio
-async def test_fetch_audio_transcription_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_fetch_audio_transcription_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from mimeo.fetchers.audio import fetch_audio
 
     _install_fake_yt_dlp(monkeypatch)
     _install_fake_whisper(monkeypatch, raise_on_transcribe=True)
-    src = Source(id="src_a", url="https://x.com/a.mp3", bucket="podcasts", medium="audio")
+    src = Source(
+        id="src_a", url="https://x.com/a.mp3", bucket="podcasts", medium="audio"
+    )
     out = await fetch_audio(src)
     assert out.fetch_method.startswith("audio-unavailable")
 
@@ -433,7 +489,9 @@ async def test_fetch_audio_transcription_failure(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.asyncio
-async def test_dispatcher_routes_youtube_to_captions(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_dispatcher_routes_youtube_to_captions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     src = Source(
         id="src_yt",
         url="https://youtu.be/abc",
@@ -451,7 +509,9 @@ async def test_dispatcher_routes_youtube_to_captions(monkeypatch: pytest.MonkeyP
             fetch_method="youtube-captions",
         )
 
-    monkeypatch.setattr("mimeo.fetchers.dispatcher.fetch_youtube_captions", _fake_captions)
+    monkeypatch.setattr(
+        "mimeo.fetchers.dispatcher.fetch_youtube_captions", _fake_captions
+    )
     out = await fetch_one(src, mode="captions", parallel=FakeParallelClient())
     assert out.fetch_method == "youtube-captions"
 
@@ -460,7 +520,9 @@ async def test_dispatcher_routes_youtube_to_captions(monkeypatch: pytest.MonkeyP
 async def test_dispatcher_routes_youtube_full_with_empty_captions_to_audio(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    src = Source(id="src_yt", url="https://youtu.be/abc", medium="youtube", bucket="talks")
+    src = Source(
+        id="src_yt", url="https://youtu.be/abc", medium="youtube", bucket="talks"
+    )
 
     async def _empty_captions(source: Source) -> FetchedContent:
         return FetchedContent(
@@ -482,7 +544,9 @@ async def test_dispatcher_routes_youtube_full_with_empty_captions_to_audio(
             fetch_method="whisper",
         )
 
-    monkeypatch.setattr("mimeo.fetchers.dispatcher.fetch_youtube_captions", _empty_captions)
+    monkeypatch.setattr(
+        "mimeo.fetchers.dispatcher.fetch_youtube_captions", _empty_captions
+    )
     # Inject the audio module with our fake fetch_audio.
     fake_audio_mod = types.ModuleType("mimeo.fetchers.audio")
     fake_audio_mod.fetch_audio = _fake_audio  # type: ignore[attr-defined]
@@ -493,8 +557,103 @@ async def test_dispatcher_routes_youtube_full_with_empty_captions_to_audio(
 
 
 @pytest.mark.asyncio
-async def test_dispatcher_routes_audio_medium_to_audio(monkeypatch: pytest.MonkeyPatch) -> None:
-    src = Source(id="src_a", url="https://x.com/a.mp3", medium="audio", bucket="podcasts")
+async def test_dispatcher_falls_back_from_unavailable_captions_to_web(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    src = Source(
+        id="src_yt", url="https://youtu.be/abc", medium="youtube", bucket="talks"
+    )
+
+    async def _empty_captions(source: Source) -> FetchedContent:
+        return FetchedContent(
+            source_id=source.id,
+            url=source.url,
+            title=source.title,
+            text="",
+            char_count=0,
+            fetch_method="youtube-unavailable:none",
+        )
+
+    async def _fake_web(source: Source, parallel) -> FetchedContent:  # type: ignore[no-untyped-def]
+        return FetchedContent(
+            source_id=source.id,
+            url=source.url,
+            title=source.title,
+            text="page transcript",
+            char_count=15,
+            fetch_method="parallel-extract",
+        )
+
+    monkeypatch.setattr(
+        "mimeo.fetchers.dispatcher.fetch_youtube_captions", _empty_captions
+    )
+    monkeypatch.setattr("mimeo.fetchers.dispatcher.fetch_web", _fake_web)
+
+    out = await fetch_one(src, mode="captions", parallel=FakeParallelClient())
+    assert out.fetch_method == "parallel-extract"
+
+
+@pytest.mark.asyncio
+async def test_dispatcher_keeps_richer_media_fallback_over_shorter_web(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    src = Source(
+        id="src_yt",
+        url="https://youtu.be/abc",
+        medium="youtube",
+        bucket="talks",
+    )
+
+    async def _empty_captions(source: Source) -> FetchedContent:
+        return FetchedContent(
+            source_id=source.id,
+            url=source.url,
+            title=source.title,
+            text="",
+            char_count=0,
+            fetch_method="youtube-unavailable:none",
+        )
+
+    async def _unavailable_audio(source: Source) -> FetchedContent:
+        return FetchedContent(
+            source_id=source.id,
+            url=source.url,
+            title=source.title,
+            text="audio excerpt",
+            char_count=13,
+            fetch_method="audio-unavailable:none",
+        )
+
+    async def _short_web(source: Source, parallel) -> FetchedContent:  # type: ignore[no-untyped-def]
+        return FetchedContent(
+            source_id=source.id,
+            url=source.url,
+            title=source.title,
+            text="web",
+            char_count=3,
+            fetch_method="parallel-excerpt",
+        )
+
+    monkeypatch.setattr(
+        "mimeo.fetchers.dispatcher.fetch_youtube_captions",
+        _empty_captions,
+    )
+    monkeypatch.setattr("mimeo.fetchers.dispatcher.fetch_web", _short_web)
+    fake_audio_mod = types.ModuleType("mimeo.fetchers.audio")
+    fake_audio_mod.fetch_audio = _unavailable_audio  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "mimeo.fetchers.audio", fake_audio_mod)
+
+    out = await fetch_one(src, mode="full", parallel=FakeParallelClient())
+    assert out.fetch_method == "audio-unavailable:none"
+
+
+@pytest.mark.asyncio
+async def test_dispatcher_routes_audio_medium_to_audio(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    src = Source(
+        id="src_a", url="https://x.com/a.mp3", medium="audio", bucket="podcasts"
+    )
 
     async def _fake_audio(source: Source) -> FetchedContent:
         return FetchedContent(
@@ -559,22 +718,30 @@ async def test_fetch_all_caches_and_handles_corruption_and_failure(
     ]
     # Seed one corrupt cache file.
     raw = settings.workspace_dir / "raw"
-    (raw / "src_000.json").write_text("garbage", encoding="utf-8")
+    store_cache(
+        raw / "src_000.json",
+        fingerprint("fetch", code=2, mode=settings.mode, source=sources[0]),
+        {},
+    )
 
     out = await fetch_all(sources, settings=settings, parallel=FakeParallelClient())
     # Corrupt cache gets replaced via refetch; failing source drops out.
     ids = [f.source_id for f in out]
     assert ids == ["src_000"]
-    cached = FetchedContent.model_validate_json(
-        (raw / "src_000.json").read_text(encoding="utf-8")
+    cached = FetchedContent.model_validate(
+        load_cache(
+            raw / "src_000.json",
+            fingerprint("fetch", code=2, mode=settings.mode, source=sources[0]),
+        )
     )
     assert cached.text == "content-src_000"
 
 
 @pytest.mark.asyncio
-async def test_fetch_all_uses_cache(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_fetch_all_uses_cache(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
     ensure_dirs(settings)
-    raw = settings.workspace_dir / "raw"
     cached = FetchedContent(
         source_id="src_000",
         url="https://x.com/0",
@@ -583,20 +750,54 @@ async def test_fetch_all_uses_cache(settings: Settings, monkeypatch: pytest.Monk
         char_count=3,
         fetch_method="parallel-excerpt",
     )
-    (raw / "src_000.json").write_text(cached.model_dump_json(), encoding="utf-8")
-
-    called = False
+    source = Source(id="src_000", url="https://x.com/0", bucket="essays")
+    called = 0
 
     async def _fake_one(*_a, **_kw):  # type: ignore[no-redef]
         nonlocal called
-        called = True
+        called += 1
         return cached
 
     monkeypatch.setattr("mimeo.fetchers.dispatcher.fetch_one", _fake_one)
+    await fetch_all(
+        [source],
+        settings=settings,
+        parallel=FakeParallelClient(),
+    )
+    assert called == 1
     out = await fetch_all(
-        [Source(id="src_000", url="https://x.com/0", bucket="essays")],
+        [source],
         settings=settings,
         parallel=FakeParallelClient(),
     )
     assert out[0].text == "hit"
-    assert called is False
+    assert called == 1
+
+
+@pytest.mark.asyncio
+async def test_fetch_cache_misses_when_mode_changes(
+    settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ensure_dirs(settings)
+    source = Source(id="src_000", url="https://x.com/0", bucket="talks")
+    calls: list[str] = []
+
+    async def _fake_one(source: Source, *, mode, parallel):  # type: ignore[no-untyped-def]
+        calls.append(mode)
+        return FetchedContent(
+            source_id=source.id,
+            url=source.url,
+            title=source.title,
+            text=f"{mode}-content",
+            char_count=len(f"{mode}-content"),
+            fetch_method="test",
+        )
+
+    monkeypatch.setattr("mimeo.fetchers.dispatcher.fetch_one", _fake_one)
+    await fetch_all([source], settings=settings, parallel=FakeParallelClient())
+    full = replace(settings, mode="full")
+    out = await fetch_all([source], settings=full, parallel=FakeParallelClient())
+
+    assert calls == ["captions", "full"]
+    assert out[0].text == "full-content"

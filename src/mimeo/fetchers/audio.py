@@ -10,13 +10,19 @@ import asyncio
 import logging
 import shutil
 import tempfile
+import threading
 from pathlib import Path
+from typing import Any
 
 from ..schemas import FetchedContent, Source
+from ..url_safety import validate_public_http_url
 
 logger = logging.getLogger(__name__)
 
 _MODEL_NAME = "base"  # good speed/quality balance; user can swap later
+_MAX_AUDIO_BYTES = 100 * 1024 * 1024
+_MODEL_INIT_LOCK = threading.Lock()
+_whisper_model: Any | None = None
 
 
 async def fetch_audio(source: Source) -> FetchedContent:
@@ -49,6 +55,7 @@ async def fetch_audio(source: Source) -> FetchedContent:
 
 def _download_audio(url: str, out_dir: Path) -> Path:
     """Use yt-dlp to pull a best-effort audio-only file into ``out_dir``."""
+    validate_public_http_url(url, resolve_dns=True)
     from yt_dlp import YoutubeDL  # type: ignore[import-not-found]
 
     template = str(out_dir / "%(id)s.%(ext)s")
@@ -59,11 +66,20 @@ def _download_audio(url: str, out_dir: Path) -> Path:
         "quiet": True,
         "no_warnings": True,
         "noprogress": True,
+        "noplaylist": True,
+        "max_filesize": _MAX_AUDIO_BYTES,
+        "socket_timeout": 30,
+        "retries": 2,
+        "fragment_retries": 2,
         "postprocessors": [
-            {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "128"},
+            {
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": "mp3",
+                "preferredquality": "128",
+            },
         ],
     }
-    with YoutubeDL(opts) as ydl:
+    with YoutubeDL(opts) as ydl:  # type: ignore[arg-type]
         info = ydl.extract_info(url, download=True)
         filename = ydl.prepare_filename(info)
     audio_path = Path(filename).with_suffix(".mp3")
@@ -74,11 +90,26 @@ def _download_audio(url: str, out_dir: Path) -> Path:
 
 
 def _transcribe(audio_path: Path) -> str:
-    from faster_whisper import WhisperModel  # type: ignore[import-not-found]
-
-    model = WhisperModel(_MODEL_NAME, device="auto", compute_type="int8")
+    model = _get_whisper_model()
     segments, _info = model.transcribe(str(audio_path), vad_filter=True)
     return "\n".join(seg.text.strip() for seg in segments if seg.text)
+
+
+def _get_whisper_model() -> Any:
+    """Lazily create and reuse the expensive Whisper model."""
+    global _whisper_model
+    if _whisper_model is not None:
+        return _whisper_model
+    with _MODEL_INIT_LOCK:
+        if _whisper_model is None:
+            from faster_whisper import WhisperModel  # type: ignore[import-not-found]
+
+            _whisper_model = WhisperModel(
+                _MODEL_NAME,
+                device="auto",
+                compute_type="int8",
+            )
+    return _whisper_model
 
 
 def _empty(source: Source, reason: str) -> FetchedContent:

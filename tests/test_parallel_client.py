@@ -34,13 +34,16 @@ def test_is_retryable_matrix() -> None:
     req = _req()
     assert _is_retryable(APIConnectionError(request=req)) is True
     assert _is_retryable(APITimeoutError(request=req)) is True
-    assert _is_retryable(
-        RateLimitError(
-            message="rl",
-            response=httpx.Response(429, request=req),
-            body=None,
+    assert (
+        _is_retryable(
+            RateLimitError(
+                message="rl",
+                response=httpx.Response(429, request=req),
+                body=None,
+            )
         )
-    ) is True
+        is True
+    )
     assert _is_retryable(_status(500)) is True
     assert _is_retryable(_status(408)) is True
     assert _is_retryable(_status(401)) is False
@@ -178,7 +181,9 @@ async def test_deep_research_returns_first_success() -> None:
 
 
 @pytest.mark.asyncio
-async def test_deep_research_retries_on_timeout_and_status(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_deep_research_retries_on_timeout_and_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     client = ParallelClient()
     success = SimpleNamespace(output=SimpleNamespace(content="ok"))
     harness = _DeepResearchHarness(
@@ -226,7 +231,7 @@ async def test_deep_research_respects_deadline(monkeypatch: pytest.MonkeyPatch) 
         def time(self) -> float:
             return _time()
 
-    monkeypatch.setattr(asyncio, "get_event_loop", lambda: _Loop())
+    monkeypatch.setattr(asyncio, "get_running_loop", lambda: _Loop())
     monkeypatch.setattr(asyncio, "sleep", lambda *_a, **_k: _noop())
 
     with pytest.raises(TimeoutError):

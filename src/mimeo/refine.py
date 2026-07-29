@@ -27,17 +27,19 @@ the artifact that actually ships.
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Awaitable, Callable, Literal, TypeVar
+from typing import Literal, TypeVar
 
 from pydantic import BaseModel
 
+from .cache import fingerprint, load_cache, prompt_digest, schema_digest, store_cache
 from .config import Settings
 from .critique import (
-    _render_skill_artifact,
-    _write_report,
     critique_agents,
     critique_skill,
+    render_skill_artifact,
+    write_report,
 )
 from .llm import LLMClient
 from .schemas import AgentsOutput, ClusteredCorpus, CritiqueReport, SkillOutput
@@ -83,10 +85,11 @@ async def refine_skill(
 
     return await _run_loop(
         kind="skill",
+        corpus=corpus,
         settings=settings,
         author_fn=author_fn,
         critique_fn=critique_fn,
-        render_artifact=_render_skill_artifact,
+        render_artifact=render_skill_artifact,
         model_cls=SkillOutput,
     )
 
@@ -110,7 +113,9 @@ async def refine_agents(
             previous_artifact=previous_artifact,
         )
 
-    async def critique_fn(output: AgentsOutput, *, write_report: bool) -> CritiqueReport:
+    async def critique_fn(
+        output: AgentsOutput, *, write_report: bool
+    ) -> CritiqueReport:
         return await critique_agents(
             output=output,
             corpus=corpus,
@@ -121,6 +126,7 @@ async def refine_agents(
 
     return await _run_loop(
         kind="agents",
+        corpus=corpus,
         settings=settings,
         author_fn=author_fn,
         critique_fn=critique_fn,
@@ -132,27 +138,58 @@ async def refine_agents(
 async def _run_loop(
     *,
     kind: Literal["skill", "agents"],
+    corpus: ClusteredCorpus,
     settings: Settings,
     author_fn: Callable[..., Awaitable[T]],
     critique_fn: Callable[..., Awaitable[CritiqueReport]],
     render_artifact: Callable[[T], str],
     model_cls: type[T],
 ) -> RefineResult[T]:
-    refined_cache = (
-        settings.workspace_dir
-        / f"{kind}_output.refined.{settings.model_cache_id}.json"
+    refined_cache = settings.workspace_dir / f"{kind}_output.refined.json"
+    refined_fingerprint = fingerprint(
+        f"refine-{kind}",
+        code=2,
+        expert=settings.expert_name,
+        expert_description=settings.expert_description,
+        model=settings.model,
+        critique=settings.critique,
+        refine=settings.refine,
+        quality_bar=settings.quality_bar,
+        max_revisions=settings.max_revisions,
+        prompts=prompt_digest(
+            "critique",
+            "revision",
+            "synthesize_skill" if kind == "skill" else "synthesize_agents",
+        ),
+        schemas=schema_digest(model_cls, CritiqueReport),
+        corpus=corpus,
     )
     # The loop only runs (and only caches) when critique is on; --no-critique
     # is a hard off-switch for the whole quality stage.
     do_refine = settings.refine and settings.critique
 
     # A completed refine run is cached whole; a repeat run skips every LLM call.
-    if do_refine and refined_cache.exists() and not settings.refresh:
+    if do_refine and not settings.refresh:
         try:
-            best = model_cls.model_validate_json(refined_cache.read_text(encoding="utf-8"))
-            logger.info("Using cached refined %s output from %s", kind, refined_cache)
-            return best, None, []
-        except Exception:  # noqa: BLE001
+            cached = load_cache(refined_cache, refined_fingerprint)
+            if cached is not None:
+                if not isinstance(cached, dict):
+                    raise ValueError("refined cache payload must be an object")
+                best = model_cls.model_validate(cached["output"])
+                report = CritiqueReport.model_validate(cached["report"])
+                trajectory = [int(score) for score in cached["trajectory"]]
+                logger.info(
+                    "Using cached refined %s output from %s", kind, refined_cache
+                )
+                write_report(report, settings=settings, kind=kind)
+                _write_trajectory(
+                    kind=kind,
+                    trajectory=trajectory,
+                    best=report.overall_score,
+                    settings=settings,
+                )
+                return best, report, trajectory
+        except Exception:  # noqa: BLE001 - validation failure is a safe miss
             logger.warning("Corrupt refined-%s cache; re-refining", kind)
 
     # Draft 0 uses the canonical author cache (feedback=None), so it is shared
@@ -173,7 +210,10 @@ async def _run_loop(
     trajectory = [best_report.overall_score]
 
     revisions = 0
-    while best_report.overall_score < settings.quality_bar and revisions < settings.max_revisions:
+    while (
+        best_report.overall_score < settings.quality_bar
+        and revisions < settings.max_revisions
+    ):
         revisions += 1
         candidate = await author_fn(
             feedback=best_report,
@@ -196,9 +236,22 @@ async def _run_loop(
 
     # The shipped artifact's report lives at the canonical path; the best draft
     # is cached for cheap re-runs; the trajectory is left as an audit trail.
-    _write_report(best_report, settings=settings, kind=kind)
-    refined_cache.write_text(best_output.model_dump_json(indent=2), encoding="utf-8")
-    _write_trajectory(kind=kind, trajectory=trajectory, best=best_report.overall_score, settings=settings)
+    write_report(best_report, settings=settings, kind=kind)
+    store_cache(
+        refined_cache,
+        refined_fingerprint,
+        {
+            "output": best_output,
+            "report": best_report,
+            "trajectory": trajectory,
+        },
+    )
+    _write_trajectory(
+        kind=kind,
+        trajectory=trajectory,
+        best=best_report.overall_score,
+        settings=settings,
+    )
     logger.info(
         "Refine (%s): %s → best %d/10 after %d revision(s)",
         kind,

@@ -65,9 +65,7 @@ def test_verify_quotes_strips_unverifiable(tmp_path: Path) -> None:
     )
     fetched = [_fetched("src_000", "A completely unrelated source body." * 20)]
 
-    cleaned, report = verify_quotes(
-        corpus=corpus, fetched=fetched, settings=settings
-    )
+    cleaned, report = verify_quotes(corpus=corpus, fetched=fetched, settings=settings)
     assert report.total == 1
     assert report.verified == 0
     assert cleaned.principles[0].representative_quote is None
@@ -85,9 +83,7 @@ def test_verify_quotes_accepts_verbatim_match(tmp_path: Path) -> None:
     corpus = _corpus_with(quote=quote, source_ids=["src_000"])
     fetched = [_fetched("src_000", text)]
 
-    cleaned, report = verify_quotes(
-        corpus=corpus, fetched=fetched, settings=settings
-    )
+    cleaned, report = verify_quotes(corpus=corpus, fetched=fetched, settings=settings)
     assert report.verified == 1
     assert report.total == 1
     assert cleaned.principles[0].representative_quote == quote
@@ -101,13 +97,11 @@ def test_verify_quotes_fuzzy_match_typographic_drift(tmp_path: Path) -> None:
     # Source uses curly quotes and em-dash; clustered quote uses straight
     # quotes and a hyphen. Should still match.
     source_text = "Before \u201cSpecific knowledge \u2014 cannot be taught\u201d after."
-    quote = 'Specific knowledge - cannot be taught'
+    quote = "Specific knowledge - cannot be taught"
     corpus = _corpus_with(quote=quote, source_ids=["src_000"])
     fetched = [_fetched("src_000", source_text)]
 
-    _cleaned, report = verify_quotes(
-        corpus=corpus, fetched=fetched, settings=settings
-    )
+    _cleaned, report = verify_quotes(corpus=corpus, fetched=fetched, settings=settings)
     assert report.verified == 1
 
 
@@ -118,9 +112,7 @@ def test_verify_quotes_passes_short_quotes_through(tmp_path: Path) -> None:
     corpus = _corpus_with(quote="Go long.", source_ids=["src_000"])
     fetched = [_fetched("src_000", "Completely unrelated text." * 10)]
 
-    _cleaned, report = verify_quotes(
-        corpus=corpus, fetched=fetched, settings=settings
-    )
+    _cleaned, report = verify_quotes(corpus=corpus, fetched=fetched, settings=settings)
     assert report.verified == 1
 
 
@@ -131,9 +123,7 @@ def test_verify_quotes_handles_missing_source_text(tmp_path: Path) -> None:
         quote="A longer quote that cannot be verified anywhere at all.",
         source_ids=["src_missing"],
     )
-    _cleaned, report = verify_quotes(
-        corpus=corpus, fetched=[], settings=settings
-    )
+    _cleaned, report = verify_quotes(corpus=corpus, fetched=[], settings=settings)
     assert report.total == 1
     assert report.verified == 0
 
@@ -143,9 +133,7 @@ def test_verify_quotes_ignores_items_without_quote(tmp_path: Path) -> None:
     ensure_dirs(settings)
     corpus = _corpus_with(quote=None, source_ids=["src_000"])
     fetched = [_fetched("src_000", "Anything.")]
-    _cleaned, report = verify_quotes(
-        corpus=corpus, fetched=fetched, settings=settings
-    )
+    _cleaned, report = verify_quotes(corpus=corpus, fetched=fetched, settings=settings)
     assert report.total == 0
     assert report.pass_rate == 1.0
 
@@ -196,8 +184,6 @@ def test_verify_quotes_ignores_whitespace_only_quote(tmp_path: Path) -> None:
     ensure_dirs(settings)
     corpus = _corpus_with(quote="   ", source_ids=["src_000"])
     fetched = [_fetched("src_000", "Body.")]
-    _cleaned, report = verify_quotes(
-        corpus=corpus, fetched=fetched, settings=settings
-    )
+    _cleaned, report = verify_quotes(corpus=corpus, fetched=fetched, settings=settings)
     # Whitespace-only reads as "no quote": it should not be counted.
     assert report.total == 0

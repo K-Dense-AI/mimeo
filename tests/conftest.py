@@ -16,8 +16,6 @@ import pytest
 from pydantic import BaseModel
 
 from mimeo.config import Settings
-from mimeo.llm import LLMClient
-from mimeo.parallel_client import ParallelClient
 from mimeo.schemas import (
     AgentsOutput,
     ClusteredCorpus,

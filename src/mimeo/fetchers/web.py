@@ -17,6 +17,7 @@ import trafilatura
 
 from ..parallel_client import ParallelClient
 from ..schemas import FetchedContent, Source
+from ..url_safety import safe_http_get, validate_public_http_url
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ _TRAFILATURA_TIMEOUT_S = 30.0
 
 
 async def fetch_web(source: Source, parallel: ParallelClient) -> FetchedContent:
+    validate_public_http_url(source.url)
     joined_excerpts = "\n\n".join(e for e in source.excerpts if e)
     if len(joined_excerpts) >= _MIN_CHARS:
         return FetchedContent(
@@ -62,7 +64,7 @@ async def fetch_web(source: Source, parallel: ParallelClient) -> FetchedContent:
             asyncio.to_thread(_trafilatura_fetch, source.url),
             timeout=_TRAFILATURA_TIMEOUT_S,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning(
             "trafilatura fetch timed out after %.0fs for %s",
             _TRAFILATURA_TIMEOUT_S,
@@ -81,12 +83,17 @@ async def fetch_web(source: Source, parallel: ParallelClient) -> FetchedContent:
         title=source.title,
         text=text[:_TARGET_CHARS],
         char_count=min(len(text), _TARGET_CHARS),
-        fetch_method="trafilatura" if text and text != joined_excerpts else "parallel-excerpt",
+        fetch_method="trafilatura"
+        if text and text != joined_excerpts
+        else "parallel-excerpt",
     )
 
 
 def _trafilatura_fetch(url: str) -> str | None:
-    downloaded = trafilatura.fetch_url(url)
+    downloaded = safe_http_get(
+        url,
+        timeout_s=_TRAFILATURA_TIMEOUT_S,
+    )
     if not downloaded:
         return None
     return trafilatura.extract(

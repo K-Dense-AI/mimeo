@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from mimeo.config import Settings, ensure_dirs
@@ -62,7 +64,7 @@ async def test_cluster_corpus_with_extractions(settings: Settings) -> None:
         extractions=[sample_extraction("src_000")], settings=settings, llm=llm
     )
     assert corpus.expert_name == settings.expert_name
-    cache = settings.workspace_dir / f"clustered_corpus.{settings.model_cache_id}.json"
+    cache = settings.workspace_dir / "clustered_corpus.json"
     assert cache.exists()
 
 
@@ -79,14 +81,14 @@ async def test_cluster_corpus_empty_shortcircuits(settings: Settings) -> None:
 @pytest.mark.asyncio
 async def test_cluster_corpus_reads_cache(settings: Settings) -> None:
     ensure_dirs(settings)
-    cache = settings.workspace_dir / f"clustered_corpus.{settings.model_cache_id}.json"
     cached = sample_clustered_corpus(settings.expert_name)
-    cache.write_text(cached.model_dump_json(), encoding="utf-8")
+    extractions = [sample_extraction()]
+    seeded = FakeLLMClient()
+    seeded.queue_structured(ClusteredCorpus, cached)
+    await cluster_corpus(extractions=extractions, settings=settings, llm=seeded)
 
     llm = FakeLLMClient()
-    corpus = await cluster_corpus(
-        extractions=[sample_extraction()], settings=settings, llm=llm
-    )
+    corpus = await cluster_corpus(extractions=extractions, settings=settings, llm=llm)
     assert corpus == cached
     assert llm.structured_calls == []
 
@@ -94,8 +96,20 @@ async def test_cluster_corpus_reads_cache(settings: Settings) -> None:
 @pytest.mark.asyncio
 async def test_cluster_corpus_recovers_from_corrupt_cache(settings: Settings) -> None:
     ensure_dirs(settings)
-    cache = settings.workspace_dir / f"clustered_corpus.{settings.model_cache_id}.json"
-    cache.write_text("not json", encoding="utf-8")
+    cache = settings.workspace_dir / "clustered_corpus.json"
+    seeded = FakeLLMClient()
+    seeded.queue_structured(
+        ClusteredCorpus,
+        sample_clustered_corpus(settings.expert_name),
+    )
+    await cluster_corpus(
+        extractions=[sample_extraction()],
+        settings=settings,
+        llm=seeded,
+    )
+    envelope = json.loads(cache.read_text(encoding="utf-8"))
+    envelope["data"] = {}
+    cache.write_text(json.dumps(envelope), encoding="utf-8")
 
     llm = FakeLLMClient()
     llm.queue_structured(ClusteredCorpus, sample_clustered_corpus(settings.expert_name))
@@ -121,28 +135,57 @@ async def test_author_skill_happy_and_caches(settings: Settings) -> None:
         llm=llm,
     )
     assert out.skill_name == "test-expert"
-    cache = settings.workspace_dir / f"skill_output.{settings.model_cache_id}.json"
+    cache = settings.workspace_dir / "skill_output.json"
     assert cache.exists()
 
 
 @pytest.mark.asyncio
 async def test_author_skill_reads_cache(settings: Settings) -> None:
     ensure_dirs(settings)
-    cache = settings.workspace_dir / f"skill_output.{settings.model_cache_id}.json"
-    cache.write_text(sample_skill_output().model_dump_json(), encoding="utf-8")
+    corpus = sample_clustered_corpus()
+    seeded = FakeLLMClient()
+    seeded.queue_structured(SkillOutput, sample_skill_output())
+    await author_skill(corpus=corpus, settings=settings, llm=seeded)
     llm = FakeLLMClient()
-    out = await author_skill(
-        corpus=sample_clustered_corpus(), settings=settings, llm=llm
-    )
+    out = await author_skill(corpus=corpus, settings=settings, llm=llm)
     assert out.skill_name == "test-expert"
     assert llm.structured_calls == []
 
 
 @pytest.mark.asyncio
+async def test_author_skill_cache_misses_when_corpus_changes(
+    settings: Settings,
+) -> None:
+    ensure_dirs(settings)
+    corpus = sample_clustered_corpus()
+    seeded = FakeLLMClient()
+    seeded.queue_structured(SkillOutput, sample_skill_output())
+    await author_skill(corpus=corpus, settings=settings, llm=seeded)
+
+    changed = corpus.model_copy(update={"themes": [*corpus.themes, "new theme"]})
+    llm = FakeLLMClient()
+    revised = sample_skill_output().model_copy(update={"skill_body": "# changed"})
+    llm.queue_structured(SkillOutput, revised)
+    out = await author_skill(corpus=changed, settings=settings, llm=llm)
+
+    assert out.skill_body == "# changed"
+    assert len(llm.structured_calls) == 1
+
+
+@pytest.mark.asyncio
 async def test_author_skill_recovers_from_corrupt_cache(settings: Settings) -> None:
     ensure_dirs(settings)
-    cache = settings.workspace_dir / f"skill_output.{settings.model_cache_id}.json"
-    cache.write_text("{bad", encoding="utf-8")
+    cache = settings.workspace_dir / "skill_output.json"
+    seeded = FakeLLMClient()
+    seeded.queue_structured(SkillOutput, sample_skill_output())
+    await author_skill(
+        corpus=sample_clustered_corpus(),
+        settings=settings,
+        llm=seeded,
+    )
+    envelope = json.loads(cache.read_text(encoding="utf-8"))
+    envelope["data"] = {}
+    cache.write_text(json.dumps(envelope), encoding="utf-8")
     llm = FakeLLMClient()
     llm.queue_structured(SkillOutput, sample_skill_output())
     out = await author_skill(
@@ -162,19 +205,19 @@ async def test_author_agents_happy_and_caches(settings: Settings) -> None:
         llm=llm,
     )
     assert "Think like Test Expert" in out.content
-    cache = settings.workspace_dir / f"agents_output.{settings.model_cache_id}.json"
+    cache = settings.workspace_dir / "agents_output.json"
     assert cache.exists()
 
 
 @pytest.mark.asyncio
 async def test_author_agents_reads_cache(settings: Settings) -> None:
     ensure_dirs(settings)
-    cache = settings.workspace_dir / f"agents_output.{settings.model_cache_id}.json"
-    cache.write_text(sample_agents_output().model_dump_json(), encoding="utf-8")
+    corpus = sample_clustered_corpus()
+    seeded = FakeLLMClient()
+    seeded.queue_structured(AgentsOutput, sample_agents_output())
+    await author_agents(corpus=corpus, settings=settings, llm=seeded)
     llm = FakeLLMClient()
-    out = await author_agents(
-        corpus=sample_clustered_corpus(), settings=settings, llm=llm
-    )
+    out = await author_agents(corpus=corpus, settings=settings, llm=llm)
     assert "Think like Test Expert" in out.content
     assert llm.structured_calls == []
 
@@ -182,11 +225,22 @@ async def test_author_agents_reads_cache(settings: Settings) -> None:
 @pytest.mark.asyncio
 async def test_author_agents_recovers_from_corrupt_cache(settings: Settings) -> None:
     ensure_dirs(settings)
-    cache = settings.workspace_dir / f"agents_output.{settings.model_cache_id}.json"
-    cache.write_text("oops", encoding="utf-8")
+    cache = settings.workspace_dir / "agents_output.json"
+    seeded = FakeLLMClient()
+    seeded.queue_structured(AgentsOutput, sample_agents_output())
+    await author_agents(
+        corpus=sample_clustered_corpus(),
+        settings=settings,
+        llm=seeded,
+    )
+    envelope = json.loads(cache.read_text(encoding="utf-8"))
+    envelope["data"] = {}
+    cache.write_text(json.dumps(envelope), encoding="utf-8")
     llm = FakeLLMClient()
     llm.queue_structured(AgentsOutput, sample_agents_output())
-    out = await author_agents(corpus=sample_clustered_corpus(), settings=settings, llm=llm)
+    out = await author_agents(
+        corpus=sample_clustered_corpus(), settings=settings, llm=llm
+    )
     assert "Think like Test Expert" in out.content
 
 
@@ -232,11 +286,16 @@ def test_split_extractions_batches_when_oversize() -> None:
 
 def test_split_extractions_caps_batch_count() -> None:
     # Make each extraction so big that one fits per batch, and spawn more
-    # than the cap so we trip the truncation path.
+    # than the cap so we trip the proportional-sampling path.
     per = _CLUSTER_BATCH_CHARS  # each alone already blows the budget
-    ext = [_big_extraction(f"src_{i:03d}", per) for i in range(_MAX_CLUSTER_BATCHES + 3)]
+    ext = [
+        _big_extraction(f"src_{i:03d}", per) for i in range(_MAX_CLUSTER_BATCHES + 3)
+    ]
     batches = _split_extractions_for_cluster(ext)
     assert len(batches) == _MAX_CLUSTER_BATCHES
+    kept = [extraction.source_id for batch in batches for extraction in batch]
+    assert kept[0] == "src_000"
+    assert kept[-1] == f"src_{len(ext) - 1:03d}"
 
 
 def test_merge_corpora_dedupes_labels_and_unions_sources() -> None:

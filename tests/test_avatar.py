@@ -16,12 +16,9 @@ from mimeo.avatar import (
 )
 from mimeo.config import Settings
 
-
 # A tiny 1x1 PNG, base64-encoded. Small enough to paste inline, large
 # enough to round-trip through base64 + write_bytes without ceremony.
-_TINY_PNG_B64 = (
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
-)
+_TINY_PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
 _TINY_PNG = base64.b64decode(_TINY_PNG_B64)
 
 
@@ -98,11 +95,7 @@ def test_extract_image_happy_path_png() -> None:
             {
                 "message": {
                     "images": [
-                        {
-                            "image_url": {
-                                "url": f"data:image/png;base64,{_TINY_PNG_B64}"
-                            }
-                        }
+                        {"image_url": {"url": f"data:image/png;base64,{_TINY_PNG_B64}"}}
                     ]
                 }
             }
@@ -115,7 +108,7 @@ def test_extract_image_happy_path_png() -> None:
     assert ext == "png"
 
 
-def test_extract_image_preserves_jpeg_extension() -> None:
+def test_extract_image_normalizes_jpeg_extension() -> None:
     body = {
         "choices": [
             {
@@ -134,7 +127,7 @@ def test_extract_image_preserves_jpeg_extension() -> None:
     out = _extract_image(body)
     assert out is not None
     _, ext = out
-    assert ext == "jpeg"
+    assert ext == "jpg"
 
 
 def test_extract_image_returns_none_for_empty_choices() -> None:
@@ -149,9 +142,7 @@ def test_extract_image_returns_none_for_non_dict_message() -> None:
 
 def test_extract_image_returns_none_when_no_images() -> None:
     assert _extract_image({"choices": [{"message": {"content": "hi"}}]}) is None
-    assert (
-        _extract_image({"choices": [{"message": {"images": []}}]}) is None
-    )
+    assert _extract_image({"choices": [{"message": {"images": []}}]}) is None
 
 
 def test_extract_image_skips_invalid_entries_and_urls() -> None:
@@ -194,6 +185,45 @@ def test_extract_image_skips_undecodable_base64() -> None:
         ]
     }
     # The one entry has bad base64; we skip it and return None.
+    assert _extract_image(body) is None
+
+
+def test_extract_image_rejects_untrusted_image_type() -> None:
+    body = {
+        "choices": [
+            {
+                "message": {
+                    "images": [
+                        {
+                            "image_url": {
+                                "url": f"data:image/svg+xml;base64,{_TINY_PNG_B64}"
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+    assert _extract_image(body) is None
+
+
+def test_extract_image_rejects_oversized_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("mimeo.avatar._MAX_AVATAR_BYTES", 4)
+    monkeypatch.setattr("mimeo.avatar._MAX_AVATAR_B64_CHARS", 8)
+    encoded = base64.b64encode(b"12345").decode()
+    body = {
+        "choices": [
+            {
+                "message": {
+                    "images": [
+                        {"image_url": {"url": f"data:image/png;base64,{encoded}"}}
+                    ]
+                }
+            }
+        ]
+    }
     assert _extract_image(body) is None
 
 
@@ -243,9 +273,7 @@ async def test_generate_avatar_raises_on_http_error(tmp_path: Path) -> None:
     response = httpx.Response(
         500,
         json={"error": "internal"},
-        request=httpx.Request(
-            "POST", "https://openrouter.ai/api/v1/chat/completions"
-        ),
+        request=httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions"),
     )
     async with _client_returning(response) as client:
         with pytest.raises(httpx.HTTPStatusError):
@@ -268,9 +296,7 @@ async def test_generate_avatar_posts_expected_payload(tmp_path: Path) -> None:
         seen["headers"] = dict(request.headers)
         seen["json"] = _json.loads(request.content.decode("utf-8"))
         return _response(
-            images=[
-                {"image_url": {"url": f"data:image/png;base64,{_TINY_PNG_B64}"}}
-            ]
+            images=[{"image_url": {"url": f"data:image/png;base64,{_TINY_PNG_B64}"}}]
         )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -300,11 +326,7 @@ async def test_generate_avatar_constructs_client_when_omitted(
         async def post(self, *args: Any, **kwargs: Any) -> httpx.Response:
             return _response(
                 images=[
-                    {
-                        "image_url": {
-                            "url": f"data:image/png;base64,{_TINY_PNG_B64}"
-                        }
-                    }
+                    {"image_url": {"url": f"data:image/png;base64,{_TINY_PNG_B64}"}}
                 ]
             )
 

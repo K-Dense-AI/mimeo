@@ -10,6 +10,7 @@ from urllib.parse import parse_qs, urlparse
 from youtube_transcript_api import YouTubeTranscriptApi
 
 from ..schemas import FetchedContent, Source
+from ..url_safety import validate_public_http_url
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,9 @@ def extract_video_id(url: str) -> str | None:
     parsed = urlparse(url)
     if parsed.hostname in ("youtu.be",):
         return parsed.path.lstrip("/") or None
-    if parsed.hostname and "youtube.com" in parsed.hostname:
+    if parsed.hostname and (
+        parsed.hostname == "youtube.com" or parsed.hostname.endswith(".youtube.com")
+    ):
         if parsed.path in ("/watch", "/watch/"):
             qs = parse_qs(parsed.query)
             v = qs.get("v", [None])[0]
@@ -32,6 +35,7 @@ def extract_video_id(url: str) -> str | None:
 
 
 async def fetch_youtube_captions(source: Source) -> FetchedContent:
+    validate_public_http_url(source.url)
     video_id = extract_video_id(source.url)
     if not video_id:
         return _empty(source, reason="no-video-id")
@@ -65,7 +69,7 @@ def _fetch_blocking(video_id: str):
         for t in tracks:
             try:
                 return t.fetch()
-            except Exception:
+            except Exception:  # noqa: BLE001 - try the next available track
                 continue
         raise
 

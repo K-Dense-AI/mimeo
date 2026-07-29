@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-from pathlib import Path
 
+from ..cache import fingerprint, load_cache, store_cache
 from ..config import Mode, Settings
 from ..parallel_client import ParallelClient
 from ..schemas import FetchedContent, Source
+from ..url_safety import validate_public_http_url
 from .web import fetch_web
 from .youtube import fetch_youtube_captions
 
@@ -22,6 +22,7 @@ async def fetch_one(
     mode: Mode,
     parallel: ParallelClient,
 ) -> FetchedContent:
+    validate_public_http_url(source.url)
     if source.medium == "youtube" and mode in ("captions", "full"):
         fetched = await fetch_youtube_captions(source)
         # If captions were empty but we're in full mode, try audio.
@@ -30,6 +31,16 @@ async def fetch_one(
             from .audio import fetch_audio  # lazy import - optional dep
 
             fetched = await fetch_audio(source)
+        if fetched.fetch_method.startswith(
+            ("youtube-unavailable", "audio-unavailable")
+        ):
+            logger.info(
+                "YouTube media fetch unavailable for %s; trying page extraction",
+                source.url,
+            )
+            web_fetched = await fetch_web(source, parallel)
+            if web_fetched.char_count > fetched.char_count:
+                fetched = web_fetched
         return fetched
 
     if source.medium == "audio" and mode == "full":
@@ -52,10 +63,18 @@ async def fetch_all(
 
     async def _task(src: Source) -> FetchedContent | None:
         cache = raw_dir / f"{src.id}.json"
-        if cache.exists() and not settings.refresh:
+        cache_fingerprint = fingerprint(
+            "fetch",
+            code=2,
+            mode=settings.mode,
+            source=src,
+        )
+        if not settings.refresh:
             try:
-                return FetchedContent.model_validate_json(cache.read_text(encoding="utf-8"))
-            except Exception:  # noqa: BLE001
+                cached = load_cache(cache, cache_fingerprint)
+                if cached is not None:
+                    return FetchedContent.model_validate(cached)
+            except Exception:  # noqa: BLE001 - validation failure is a safe miss
                 logger.warning("Corrupt fetch cache for %s; re-fetching", src.id)
 
         async with sem:
@@ -64,7 +83,7 @@ async def fetch_all(
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Fetch failed for %s: %s", src.url, exc)
                 return None
-        cache.write_text(fetched.model_dump_json(indent=2), encoding="utf-8")
+        store_cache(cache, cache_fingerprint, fetched)
         return fetched
 
     results = await asyncio.gather(*(_task(s) for s in sources))

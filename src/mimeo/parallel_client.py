@@ -138,9 +138,12 @@ class ParallelClient:
             metadata=safe_metadata,  # type: ignore[arg-type]
         )
         run_id = run.run_id
-        logger.info("Started Parallel deep-research run %s (processor=%s)", run_id, processor)
+        logger.info(
+            "Started Parallel deep-research run %s (processor=%s)", run_id, processor
+        )
 
-        deadline = asyncio.get_event_loop().time() + max_wait_s
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + max_wait_s
         while True:
             try:
                 # Use the server-side long-poll via api_timeout.
@@ -153,11 +156,15 @@ class ParallelClient:
                 # 408/425-style "still running" surfaces as a status error on
                 # some deployments; retry until our overall deadline hits.
                 if exc.status_code in (408, 425, 504):
-                    logger.debug("Task %s not ready yet (%s), continuing", run_id, exc.status_code)
+                    logger.debug(
+                        "Task %s not ready yet (%s), continuing",
+                        run_id,
+                        exc.status_code,
+                    )
                 else:
                     raise
 
-            if asyncio.get_event_loop().time() > deadline:
+            if loop.time() > deadline:
                 raise TimeoutError(
                     f"Parallel deep-research run {run_id} exceeded {max_wait_s:.0f}s deadline"
                 )

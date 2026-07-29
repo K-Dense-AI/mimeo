@@ -11,8 +11,8 @@ import pytest
 import yaml
 
 from mimeo.config import (
-    MissingCredentialError,
     PROMPTS_DIR,
+    MissingCredentialError,
     Settings,
     ensure_dirs,
     require_openrouter_key,
@@ -33,18 +33,23 @@ from mimeo.writers import write_agents, write_skill
 
 def test_extract_video_id() -> None:
     assert extract_video_id("https://youtu.be/dQw4w9WgXcQ") == "dQw4w9WgXcQ"
-    assert (
-        extract_video_id("https://www.youtube.com/watch?v=abc123&t=10s") == "abc123"
-    )
+    assert extract_video_id("https://www.youtube.com/watch?v=abc123&t=10s") == "abc123"
     assert extract_video_id("https://youtube.com/shorts/xyz789") == "xyz789"
     assert extract_video_id("https://example.com/not-youtube") is None
 
 
 def test_prompt_files_exist() -> None:
-    for name in ("extract", "cluster", "synthesize_skill", "synthesize_agents"):
+    for name in (
+        "extract",
+        "cluster",
+        "synthesize_skill",
+        "synthesize_agents",
+        "critique",
+        "revision",
+    ):
         content = load_prompt(name)
         assert content
-        assert PROMPTS_DIR / f"{name}.md"
+        assert (PROMPTS_DIR / f"{name}.md").is_file()
 
 
 def test_schema_roundtrip() -> None:
@@ -120,7 +125,9 @@ def test_write_skill(tmp_path: Path) -> None:
     assert "No explicit anti-patterns" in anti_md
 
 
-def test_write_skill_honors_provided_heuristics_and_anti_patterns(tmp_path: Path) -> None:
+def test_write_skill_honors_provided_heuristics_and_anti_patterns(
+    tmp_path: Path,
+) -> None:
     settings = Settings(expert_name="Test Expert", output_dir=tmp_path)
     ensure_dirs(settings)
     output = SkillOutput(
@@ -184,8 +191,12 @@ def test_settings_slug_and_paths(tmp_path: Path) -> None:
 
 
 def test_model_cache_id_is_stable_and_model_scoped(tmp_path: Path) -> None:
-    a = Settings(expert_name="N", output_dir=tmp_path, model="anthropic/claude-opus-4.7")
-    b = Settings(expert_name="N", output_dir=tmp_path, model="anthropic/claude-opus-4.7")
+    a = Settings(
+        expert_name="N", output_dir=tmp_path, model="anthropic/claude-opus-4.7"
+    )
+    b = Settings(
+        expert_name="N", output_dir=tmp_path, model="anthropic/claude-opus-4.7"
+    )
     c = Settings(expert_name="N", output_dir=tmp_path, model="openai/gpt-5")
     assert a.model_cache_id == b.model_cache_id
     assert a.model_cache_id != c.model_cache_id
@@ -207,7 +218,9 @@ def test_normalize_url() -> None:
 
 def test_merge_and_dedupe_collapses_duplicates() -> None:
     sources = [
-        Source(id="a_000", url="https://example.com/x/", title="X long", bucket="essays"),
+        Source(
+            id="a_000", url="https://example.com/x/", title="X long", bucket="essays"
+        ),
         Source(
             id="b_000",
             url="https://example.com/x?utm_source=y",
@@ -229,8 +242,8 @@ def test_merge_and_dedupe_collapses_duplicates() -> None:
 
 
 def test_strip_code_fence() -> None:
-    assert _strip_code_fence("```json\n{\"a\": 1}\n```") == '{"a": 1}'
-    assert _strip_code_fence("```\n{\"a\": 1}\n```") == '{"a": 1}'
+    assert _strip_code_fence('```json\n{"a": 1}\n```') == '{"a": 1}'
+    assert _strip_code_fence('```\n{"a": 1}\n```') == '{"a": 1}'
     assert _strip_code_fence('{"a": 1}') == '{"a": 1}'
     # Single-line fenced block (no newline) falls through untouched.
     assert _strip_code_fence("  hello  ") == "hello"

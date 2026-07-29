@@ -155,7 +155,9 @@ class LLMClient:
                 if remaining == 0:
                     raise
 
-        raise RuntimeError("unreachable")  # pragma: no cover - loop always returns or raises
+        raise RuntimeError(
+            "unreachable"
+        )  # pragma: no cover - loop always returns or raises
 
 
 # Status codes where a retry has a reasonable chance of succeeding. 4xx

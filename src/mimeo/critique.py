@@ -1,13 +1,8 @@
 """Post-author critique: grade the generated artifact and surface issues.
 
-After authoring a SKILL.md (and/or AGENTS.md), we run one more LLM pass
-that plays the role of an adversarial editor. The critique is written to
-``_workspace/critique.md`` as a human-readable report and to
-``critique.json`` as a machine-readable :class:`CritiqueReport`.
-
-We don't auto-rewrite based on the critique — that's a deliberate choice to
-keep cost predictable. The critique is an artifact the human can read, not
-an iterative rewrite loop.
+After authoring a SKILL.md (and/or AGENTS.md), an adversarial editor grades
+the draft. :mod:`mimeo.refine` may feed that report back into authoring; the
+best draft's final report is persisted in both JSON and Markdown.
 """
 
 from __future__ import annotations
@@ -20,6 +15,7 @@ import yaml
 
 from .config import Settings
 from .llm import LLMClient, load_prompt, render_prompt
+from .prompt_safety import wrap_untrusted_block
 from .schemas import (
     AgentsOutput,
     ClusteredCorpus,
@@ -43,14 +39,14 @@ async def critique_skill(
     write_report: bool = True,
 ) -> CritiqueReport:
     """Critique an authored SKILL.md + references bundle."""
-    artifact = _render_skill_artifact(output)
+    artifact = render_skill_artifact(output)
     return await _critique(
         kind="skill",
         artifact=artifact,
         corpus=corpus,
         settings=settings,
         llm=llm,
-        write_report=write_report,
+        persist_report=write_report,
     )
 
 
@@ -69,7 +65,7 @@ async def critique_agents(
         corpus=corpus,
         settings=settings,
         llm=llm,
-        write_report=write_report,
+        persist_report=write_report,
     )
 
 
@@ -80,7 +76,7 @@ async def _critique(
     corpus: ClusteredCorpus,
     settings: Settings,
     llm: LLMClient,
-    write_report: bool,
+    persist_report: bool,
 ) -> CritiqueReport:
     template = load_prompt("critique")
     corpus_json = corpus.model_dump_json(indent=2, exclude_none=True)
@@ -88,8 +84,14 @@ async def _critique(
         template,
         expert=settings.expert_name,
         expert_context=settings.expert_context,
-        artifact=_truncate(artifact, _ARTIFACT_CHAR_BUDGET),
-        corpus_json=_truncate(corpus_json, _CORPUS_CHAR_BUDGET),
+        artifact=wrap_untrusted_block(
+            "artifact",
+            _truncate(artifact, _ARTIFACT_CHAR_BUDGET),
+        ),
+        corpus_json=wrap_untrusted_block(
+            "clustered_corpus",
+            _truncate(corpus_json, _CORPUS_CHAR_BUDGET),
+        ),
     )
     system = (
         "You are an adversarial editor. You review drafts for voice, "
@@ -104,8 +106,8 @@ async def _critique(
         max_tokens=6_000,
     )
 
-    if write_report:
-        _write_report(report, settings=settings, kind=kind)
+    if persist_report:
+        write_report(report, settings=settings, kind=kind)
     logger.info(
         "Critique (%s): score %d/10, %d issues (%d high)",
         kind,
@@ -116,7 +118,7 @@ async def _critique(
     return report
 
 
-def _render_skill_artifact(output: SkillOutput) -> str:
+def render_skill_artifact(output: SkillOutput) -> str:
     """Assemble the authored skill into one text blob for the critic.
 
     We reconstruct roughly what the on-disk skill will look like so the
@@ -153,7 +155,7 @@ def _truncate(text: str, limit: int) -> str:
     return text[:limit] + "\n\n... [truncated for length] ..."
 
 
-def _write_report(
+def write_report(
     report: CritiqueReport, *, settings: Settings, kind: Literal["skill", "agents"]
 ) -> None:
     json_path: Path = settings.workspace_dir / f"critique_{kind}.json"

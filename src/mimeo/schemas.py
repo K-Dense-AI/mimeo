@@ -6,7 +6,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-
 SourceKind = Literal[
     "essay",
     "talk",
@@ -48,7 +47,9 @@ class FetchedContent(BaseModel):
     title: str | None
     text: str
     char_count: int
-    fetch_method: str = Field(description="parallel-excerpt | parallel-extract | trafilatura | youtube-captions | whisper")
+    fetch_method: str = Field(
+        description="parallel-excerpt | parallel-extract | trafilatura | youtube-captions | whisper"
+    )
     language: str | None = None
 
 
@@ -201,7 +202,9 @@ class SkillOutput(BaseModel):
     description: str = Field(
         description="Skill-creator style trigger description (frontmatter)."
     )
-    skill_body: str = Field(description="Markdown body of SKILL.md (after frontmatter).")
+    skill_body: str = Field(
+        description="Markdown body of SKILL.md (after frontmatter)."
+    )
     principles_md: str
     frameworks_md: str
     mental_models_md: str

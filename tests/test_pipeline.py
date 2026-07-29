@@ -6,6 +6,7 @@ output formats plus the deep-research and empty-discovery branches.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -54,13 +55,25 @@ def _six_bucket_search() -> dict[str, Any]:
             [{"url": "https://a.com/t", "title": "Talk", "excerpts": ["x" * 3_000]}]
         ),
         "interviews": make_search_result(
-            [{"url": "https://a.com/i", "title": "Interview", "excerpts": ["x" * 3_000]}]
+            [
+                {
+                    "url": "https://a.com/i",
+                    "title": "Interview",
+                    "excerpts": ["x" * 3_000],
+                }
+            ]
         ),
         "podcasts": make_search_result(
             [{"url": "https://a.com/p", "title": "Podcast", "excerpts": ["x" * 3_000]}]
         ),
         "frameworks": make_search_result(
-            [{"url": "https://a.com/f", "title": "Framework", "excerpts": ["x" * 3_000]}]
+            [
+                {
+                    "url": "https://a.com/f",
+                    "title": "Framework",
+                    "excerpts": ["x" * 3_000],
+                }
+            ]
         ),
         "books": make_search_result(
             [{"url": "https://a.com/b", "title": "Book", "excerpts": ["x" * 3_000]}]
@@ -128,7 +141,9 @@ def full_settings(tmp_path: Path) -> Settings:
 @pytest.mark.asyncio
 async def test_pipeline_skill_format(full_settings: Settings) -> None:
     parallel = FakeParallelClient(search_by_bucket=_six_bucket_search())
-    llm = _build_llm(full_settings.expert_name, include_skill=True, include_agents=False)
+    llm = _build_llm(
+        full_settings.expert_name, include_skill=True, include_agents=False
+    )
 
     stages: list[str] = []
     out = await run_pipeline(
@@ -143,11 +158,16 @@ async def test_pipeline_skill_format(full_settings: Settings) -> None:
     assert (out / "references" / "heuristics.md").exists()
     assert (out / "references" / "anti-patterns.md").exists()
     assert not (out / "AGENTS.md").exists()
-    # Stage labels count 1..6: 4 baseline + author + critique.
-    assert all("/6" in s for s in stages)
-    assert any("Critique skill" in s for s in stages)
+    # Critique/refine is part of the authoring stage.
+    assert all("/5" in s for s in stages)
+    assert not any("Critique skill" in s for s in stages)
     # Critique was written to the workspace.
     assert (full_settings.skill_dir / "_workspace" / "critique_skill.md").exists()
+    summary = json.loads(
+        (full_settings.workspace_dir / "run_summary.json").read_text(encoding="utf-8")
+    )
+    assert summary["counts"]["discovered"] == 5
+    assert summary["quality"]["skill"]["score"] == 8
 
 
 @pytest.mark.asyncio
@@ -183,12 +203,16 @@ async def test_pipeline_agents_format(full_settings: Settings) -> None:
         verify_quotes=False,
     )
     parallel = FakeParallelClient(search_by_bucket=_six_bucket_search())
-    llm = _build_llm(full_settings.expert_name, include_skill=False, include_agents=True)
+    llm = _build_llm(
+        full_settings.expert_name, include_skill=False, include_agents=True
+    )
 
     out = await run_pipeline(full_settings_agents, parallel=parallel, llm=llm)
     assert (out / "AGENTS.md").exists()
     assert not (out / "SKILL.md").exists()
-    assert (full_settings_agents.skill_dir / "_workspace" / "critique_agents.md").exists()
+    assert (
+        full_settings_agents.skill_dir / "_workspace" / "critique_agents.md"
+    ).exists()
 
 
 @pytest.mark.asyncio
@@ -213,7 +237,7 @@ async def test_pipeline_agents_format_no_critique(full_settings: Settings) -> No
 
 
 @pytest.mark.asyncio
-async def test_pipeline_both_format_uses_eight_stages(full_settings: Settings) -> None:
+async def test_pipeline_both_format_uses_six_stages(full_settings: Settings) -> None:
     both_settings = Settings(
         expert_name=full_settings.expert_name,
         output_dir=full_settings.output_dir,
@@ -236,10 +260,9 @@ async def test_pipeline_both_format_uses_eight_stages(full_settings: Settings) -
     assert (out / "SKILL.md").exists()
     assert (out / "AGENTS.md").exists()
     # 4 baseline + author skill + critique skill + author agents + critique agents = 8.
-    assert any(s.startswith("5/8 Author skill") for s in stages)
-    assert any(s.startswith("6/8 Critique skill") for s in stages)
-    assert any(s.startswith("7/8 Author AGENTS.md") for s in stages)
-    assert any(s.startswith("8/8 Critique AGENTS.md") for s in stages)
+    assert any(s.startswith("5/6 Author skill") for s in stages)
+    assert any(s.startswith("6/6 Author AGENTS.md") for s in stages)
+    assert not any("Critique" in s for s in stages)
     # No duplicate stage numbers in the stream.
     numbered = [s.split()[0] for s in stages]
     assert len(set(numbered)) == len(numbered)
@@ -266,9 +289,7 @@ async def test_pipeline_verify_quotes_no_quotes_in_corpus(tmp_path: Path) -> Non
 
     quoteless = ClusteredCorpus(
         expert_name=s.expert_name,
-        principles=[
-            ClusteredItem(label="Idea", summary="s", source_ids=["src_000"])
-        ],
+        principles=[ClusteredItem(label="Idea", summary="s", source_ids=["src_000"])],
     )
     llm.queue_structured(ClusteredCorpus, quoteless)
     llm.queue_structured(SkillOutput, sample_skill_output())
@@ -333,9 +354,8 @@ async def test_pipeline_critique_low_score_is_surfaced(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_pipeline_verify_quotes_all_pass(tmp_path: Path) -> None:
     """When every quote is in its source text, no unverified message shows."""
-    from types import SimpleNamespace
 
-    from mimeo.schemas import ClusteredCorpus, ClusteredItem, FetchedContent
+    from mimeo.schemas import ClusteredCorpus, ClusteredItem
 
     quote = "A clearly verbatim line we know appears in the fake fetched text."
     text = "Before " + quote + " and after padding " * 20
@@ -387,7 +407,6 @@ async def test_pipeline_verify_quotes_all_pass(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_pipeline_verify_quotes_strips_fabrications(tmp_path: Path) -> None:
     """An unverifiable representative quote is stripped from the authored corpus."""
-    from dataclasses import replace
 
     s = Settings(
         expert_name="Test Expert",
@@ -425,7 +444,9 @@ async def test_pipeline_with_deep_research(full_settings: Settings) -> None:
             output=SimpleNamespace(content="Deep report body.")
         ),
     )
-    llm = _build_llm(full_settings.expert_name, include_skill=True, include_agents=False)
+    llm = _build_llm(
+        full_settings.expert_name, include_skill=True, include_agents=False
+    )
     # One extra Extraction for the research pseudo-source.
     llm.queue_structured(Extraction, sample_extraction("src_research"))
 
@@ -450,7 +471,9 @@ async def test_pipeline_with_deep_research_failure_is_tolerated(
         search_by_bucket=_six_bucket_search(),
         deep_research_raises=RuntimeError("task down"),
     )
-    llm = _build_llm(full_settings.expert_name, include_skill=True, include_agents=False)
+    llm = _build_llm(
+        full_settings.expert_name, include_skill=True, include_agents=False
+    )
     out = await run_pipeline(dr_settings, parallel=parallel, llm=llm)
     assert (out / "SKILL.md").exists()
 
@@ -556,8 +579,12 @@ async def test_pipeline_refine_path(full_settings: Settings) -> None:
     # Two skill drafts; the second clears the bar.
     llm.queue_structured(SkillOutput, sample_skill_output())
     llm.queue_structured(SkillOutput, sample_skill_output())
-    llm.queue_structured(CritiqueReport, CritiqueReport(overall_score=5, summary="meh", issues=[]))
-    llm.queue_structured(CritiqueReport, CritiqueReport(overall_score=9, summary="good", issues=[]))
+    llm.queue_structured(
+        CritiqueReport, CritiqueReport(overall_score=5, summary="meh", issues=[])
+    )
+    llm.queue_structured(
+        CritiqueReport, CritiqueReport(overall_score=9, summary="good", issues=[])
+    )
 
     out = await run_pipeline(s, parallel=parallel, llm=llm)
     assert (out / "SKILL.md").exists()
@@ -576,6 +603,57 @@ async def test_pipeline_raises_when_no_sources(full_settings: Settings) -> None:
     llm = FakeLLMClient()
     with pytest.raises(RuntimeError, match="No sources discovered"):
         await run_pipeline(full_settings, parallel=parallel, llm=llm)
+
+
+@pytest.mark.asyncio
+async def test_pipeline_raises_when_no_content_fetched(
+    full_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parallel = FakeParallelClient(search_by_bucket=_six_bucket_search())
+
+    async def _empty_fetch(*_args: object, **_kwargs: object) -> list[FetchedContent]:
+        return []
+
+    monkeypatch.setattr("mimeo.pipeline.fetch_all", _empty_fetch)
+    with pytest.raises(RuntimeError, match="No usable source content"):
+        await run_pipeline(
+            full_settings,
+            parallel=parallel,
+            llm=FakeLLMClient(),
+        )
+
+
+@pytest.mark.asyncio
+async def test_pipeline_raises_when_no_extractions(
+    full_settings: Settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    parallel = FakeParallelClient(search_by_bucket=_six_bucket_search())
+
+    async def _some_fetch(*_args: object, **_kwargs: object) -> list[FetchedContent]:
+        return [
+            FetchedContent(
+                source_id="src_000",
+                url="https://a.com/e",
+                title="Essay",
+                text="usable content",
+                char_count=14,
+                fetch_method="test",
+            )
+        ]
+
+    async def _empty_distill(*_args: object, **_kwargs: object) -> list[Extraction]:
+        return []
+
+    monkeypatch.setattr("mimeo.pipeline.fetch_all", _some_fetch)
+    monkeypatch.setattr("mimeo.pipeline.distill_all", _empty_distill)
+    with pytest.raises(RuntimeError, match="No usable extractions"):
+        await run_pipeline(
+            full_settings,
+            parallel=parallel,
+            llm=FakeLLMClient(),
+        )
 
 
 @pytest.mark.asyncio
@@ -599,9 +677,7 @@ async def test_pipeline_constructs_default_clients_when_omitted(
         self.model = model
         self._client = None
 
-    monkeypatch.setattr(
-        "mimeo.pipeline.ParallelClient.__init__", _fake_parallel_init
-    )
+    monkeypatch.setattr("mimeo.pipeline.ParallelClient.__init__", _fake_parallel_init)
     monkeypatch.setattr("mimeo.pipeline.LLMClient.__init__", _fake_llm_init)
 
     async def _no_sources(**_: object):
@@ -639,13 +715,13 @@ async def test_pipeline_runs_identity_resolution_when_not_skipped(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Without ``assume_unambiguous``, the identity stage is invoked."""
-    from mimeo.schemas import IdentityResolution
 
     called: dict[str, int] = {"n": 0}
 
     async def _fake_resolve(*, settings, parallel, llm, console=None):
         called["n"] += 1
         from dataclasses import replace as _replace
+
         return _replace(settings, expert_description="the one")
 
     monkeypatch.setattr("mimeo.pipeline.resolve_identity", _fake_resolve)

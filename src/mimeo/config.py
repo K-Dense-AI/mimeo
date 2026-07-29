@@ -20,8 +20,8 @@ load_dotenv()
 Mode = Literal["text", "captions", "full"]
 Format = Literal["skill", "agents", "both"]
 
-DEFAULT_MODEL = os.environ.get("MIMEO_MODEL", "google/gemini-3.1-pro-preview")
-DEFAULT_AVATAR_MODEL = os.environ.get("MIMEO_AVATAR_MODEL", "openai/gpt-5.4-image-2")
+DEFAULT_MODEL = os.environ.get("MIMEO_MODEL", "google/gemini-3.6-flash")
+DEFAULT_AVATAR_MODEL = os.environ.get("MIMEO_AVATAR_MODEL", "openai/gpt-image-2")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
@@ -66,6 +66,28 @@ class Settings:
     # main pipeline. On by default; disable with ``--no-avatar``.
     generate_avatar: bool = True
     avatar_model: str = DEFAULT_AVATAR_MODEL
+
+    def __post_init__(self) -> None:
+        if not self.expert_name.strip():
+            raise ValueError("expert_name must not be empty")
+        if self.mode not in ("text", "captions", "full"):
+            raise ValueError(f"Unsupported mode: {self.mode}")
+        if self.format not in ("skill", "agents", "both"):
+            raise ValueError(f"Unsupported format: {self.format}")
+        if not 1 <= self.max_sources <= 200:
+            raise ValueError("max_sources must be between 1 and 200")
+        if not 1 <= self.concurrency <= 20:
+            raise ValueError("concurrency must be between 1 and 20")
+        if not 0 <= self.max_revisions <= 5:
+            raise ValueError("max_revisions must be between 0 and 5")
+        if not 0 <= self.quality_bar <= 10:
+            raise ValueError("quality_bar must be between 0 and 10")
+        if not self.model.strip():
+            raise ValueError("model must not be empty")
+        if self.generate_avatar and not self.avatar_model.strip():
+            raise ValueError(
+                "avatar_model must not be empty when avatar generation is enabled"
+            )
 
     @property
     def slug(self) -> str:

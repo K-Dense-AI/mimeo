@@ -48,6 +48,9 @@ pip install -e .
 
 # For podcast audio transcription (optional, slower, heavier)
 uv sync --extra full
+
+# Contributor tooling (tests, coverage, lint, type checks)
+uv sync --locked --group dev
 ```
 
 Copy `.env.example` to `.env` and fill in:
@@ -56,6 +59,9 @@ Copy `.env.example` to `.env` and fill in:
 OPENROUTER_API_KEY=sk-or-...
 PARALLEL_API_KEY=...
 ```
+
+Keep `.env` private (`chmod 600 .env` on macOS/Linux). It is ignored by Git,
+but its API keys are still usable by any local account that can read the file.
 
 ## Usage
 
@@ -75,7 +81,7 @@ Flags:
 | `--assume-unambiguous` | off | Skip the disambiguation pre-flight entirely. Useful in non-interactive scripts where you're confident the name is unique. |
 | `--model SLUG` | `google/gemini-3.1-pro-preview` | Any OpenRouter model slug. |
 | `--output-dir PATH` | `./output` | Where the generated skill lands. |
-| `--refresh` | off | Ignore cached intermediates in `_workspace/` and re-run everything. |
+| `--refresh` | off | Ignore fingerprinted intermediates in `_workspace/` and re-run everything. |
 | `--concurrency N` | `5` | Concurrent per-source distillation calls. |
 | `--verify-quotes` / `--no-verify-quotes` | on | Check every clustered quote against its source text before authoring; strip ones that don't match. |
 | `--critique` / `--no-critique` | on | Adversarial-editor review of the authored skill, written to `_workspace/critique_*.md`. Master switch: `--no-critique` also disables refining. |
@@ -129,7 +135,7 @@ output/naval-ravikant/
 ├── avatar.png          # omit with --no-avatar
 └── _workspace/         # cached intermediates (identity, discovery, raw, distilled)
                         # + quote_verification.{json,md}, critique_skill.{json,md},
-                        # and refine_skill.md (score trajectory, unless --no-refine)
+                        # refine_skill.md, and run_summary.json
 ```
 
 With `--format agents`:
@@ -143,9 +149,13 @@ output/naval-ravikant/
 
 With `--format both` you get both `SKILL.md` + `references/` **and** `AGENTS.md` in the same directory; they share the cached discovery / fetch / distill / cluster stages (and a single avatar), so the second format is cheap.
 
+Workspace caches use versioned fingerprints derived from all relevant settings,
+upstream content, prompts, and schemas. Old bare JSON caches are treated as safe
+misses and rebuilt automatically; `--refresh` remains the explicit full reset.
+
 ## Architecture
 
-See [the plan](.cursor/plans/) or the source under [`src/mimeo/`](src/mimeo/). Roughly:
+See the source under [`src/mimeo/`](src/mimeo/). Roughly:
 
 ```
 cli -> pipeline -> identity   (Parallel search + LLM: ambiguous? which person?)
@@ -160,6 +170,51 @@ cli -> pipeline -> identity   (Parallel search + LLM: ambiguous? which person?)
                 -> refine?    (loop: critique → re-author → re-critique, keep best draft)
                 -> avatar?    (OpenRouter image model → avatar.png)
 ```
+
+## Security posture
+
+Discovered and cached source URLs must be public HTTP(S) destinations. Local web
+fallbacks reject credentials, private/link-local/metadata addresses, validate
+DNS, re-check redirects, and cap response size. `yt-dlp` downloads also have
+timeouts, retry limits, playlist blocking, and a file-size cap.
+
+These are best-effort safeguards for a local research CLI, not a substitute for
+network isolation in a multi-tenant service. DNS rebinding and redirects handled
+internally by third-party downloaders remain residual risks. Run untrusted
+research jobs in an isolated network environment if stronger guarantees are
+required.
+
+Fetched text and derived artifacts are explicitly delimited as untrusted data in
+LLM prompts. This reduces prompt-injection risk but cannot make model behavior a
+security boundary; review generated `SKILL.md` and `AGENTS.md` before installing
+them.
+
+## Development
+
+```bash
+uv sync --locked --group dev
+uv run ruff check src tests scripts
+uv run ruff format --check src tests scripts
+uv run basedpyright
+uv run pytest --cov --cov-report=term-missing
+uv build
+```
+
+The offline suite never calls paid APIs and enforces 99% coverage. Live smoke
+tests are opt-in:
+
+```bash
+MIMEO_LIVE=1 uv run pytest tests/test_live.py
+```
+
+Operational helpers are tracked under `scripts/`:
+
+- `run_mimeo_batch.sh` regenerates the curated 20-expert gallery sequentially.
+- `backfill_avatars.py` adds avatars to existing output trees.
+- `generate_repo_image.py` regenerates the README explainer image.
+
+Generated deliverables under `output/` are intentionally committed as the
+project gallery. Their `_workspace/` caches and logs remain local and ignored.
 
 ## Star History
 

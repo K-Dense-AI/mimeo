@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -11,8 +12,7 @@ from mimeo.config import Settings, ensure_dirs
 from mimeo.refine import refine_agents, refine_skill
 from mimeo.schemas import AgentsOutput, CritiqueReport, SkillOutput
 
-from .conftest import FakeLLMClient, sample_clustered_corpus, sample_skill_output
-
+from .conftest import FakeLLMClient, sample_clustered_corpus
 
 # ---------------------------------------------------------------------------
 # Builders
@@ -164,7 +164,7 @@ async def test_max_revisions_zero_does_not_revise(tmp_path: Path) -> None:
     llm.queue_structured(SkillOutput, _skill("draft0"))
     llm.queue_structured(CritiqueReport, _critique(3))
 
-    output, report, trajectory = await refine_skill(
+    output, _report, trajectory = await refine_skill(
         corpus=sample_clustered_corpus(), settings=s, llm=llm
     )
     assert output.skill_body.strip() == "# draft0"
@@ -210,14 +210,40 @@ async def test_refined_cache_short_circuits_rerun(tmp_path: Path) -> None:
         corpus=sample_clustered_corpus(), settings=s, llm=fresh
     )
     assert output.skill_body.strip() == "# draft0"
-    assert report is None and trajectory == []
+    assert report is not None and report.overall_score == 9
+    assert trajectory == [9]
     assert fresh.structured_calls == []
+
+
+@pytest.mark.asyncio
+async def test_refined_cache_misses_when_quality_settings_change(
+    tmp_path: Path,
+) -> None:
+    s = _settings(tmp_path, refine=True, quality_bar=8, max_revisions=0)
+    corpus = sample_clustered_corpus()
+    seeded = FakeLLMClient()
+    seeded.queue_structured(SkillOutput, _skill("draft0"))
+    seeded.queue_structured(CritiqueReport, _critique(9))
+    await refine_skill(corpus=corpus, settings=s, llm=seeded)
+
+    stricter = replace(s, quality_bar=10)
+    fresh = FakeLLMClient()
+    fresh.queue_structured(CritiqueReport, _critique(9))
+    _output, report, trajectory = await refine_skill(
+        corpus=corpus,
+        settings=stricter,
+        llm=fresh,
+    )
+
+    assert report is not None and report.overall_score == 9
+    assert trajectory == [9]
+    assert len(fresh.structured_calls) == 1
 
 
 @pytest.mark.asyncio
 async def test_refresh_ignores_refined_cache(tmp_path: Path) -> None:
     s = _settings(tmp_path, refine=True, quality_bar=8, max_revisions=0)
-    cache = s.workspace_dir / f"skill_output.refined.{s.model_cache_id}.json"
+    cache = s.workspace_dir / "skill_output.refined.json"
     cache.write_text(_skill("stale").model_dump_json(), encoding="utf-8")
 
     s2 = replace(s, refresh=True)
@@ -233,8 +259,19 @@ async def test_refresh_ignores_refined_cache(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_corrupt_refined_cache_re_refines(tmp_path: Path) -> None:
     s = _settings(tmp_path, refine=True, quality_bar=8, max_revisions=0)
-    cache = s.workspace_dir / f"skill_output.refined.{s.model_cache_id}.json"
-    cache.write_text("not json", encoding="utf-8")
+    cache = s.workspace_dir / "skill_output.refined.json"
+    seeded = FakeLLMClient()
+    seeded.queue_structured(SkillOutput, _skill("stale"))
+    seeded.queue_structured(CritiqueReport, _critique(9))
+    await refine_skill(
+        corpus=sample_clustered_corpus(),
+        settings=s,
+        llm=seeded,
+    )
+    payload = json.loads(cache.read_text(encoding="utf-8"))
+    payload["data"] = []
+    cache.write_text(json.dumps(payload), encoding="utf-8")
+    (s.workspace_dir / "skill_output.json").unlink()
 
     llm = FakeLLMClient()
     llm.queue_structured(SkillOutput, _skill("rebuilt"))
@@ -243,8 +280,9 @@ async def test_corrupt_refined_cache_re_refines(tmp_path: Path) -> None:
         corpus=sample_clustered_corpus(), settings=s, llm=llm
     )
     assert output.skill_body.strip() == "# rebuilt"
-    # Cache was overwritten with valid JSON.
-    SkillOutput.model_validate_json(cache.read_text())
+    # Cache was overwritten with a valid envelope.
+    payload = json.loads(cache.read_text(encoding="utf-8"))
+    SkillOutput.model_validate(payload["data"]["output"])
 
 
 # ---------------------------------------------------------------------------

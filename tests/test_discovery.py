@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -20,7 +19,6 @@ from mimeo.discovery import (
 from mimeo.schemas import RankedSources, Source
 
 from .conftest import FakeLLMClient, FakeParallelClient, make_search_result
-
 
 # ---------------------------------------------------------------------------
 # Pure helpers
@@ -39,8 +37,16 @@ def test_guess_medium() -> None:
 
 def test_merge_keeps_non_other_kind_and_unions_excerpts() -> None:
     sources = [
-        Source(id="a", url="https://x.com/p", kind="other", bucket="frameworks", excerpts=["A"]),
-        Source(id="b", url="https://x.com/p", kind="talk", bucket="talks", excerpts=["B"]),
+        Source(
+            id="a",
+            url="https://x.com/p",
+            kind="other",
+            bucket="frameworks",
+            excerpts=["A"],
+        ),
+        Source(
+            id="b", url="https://x.com/p", kind="talk", bucket="talks", excerpts=["B"]
+        ),
     ]
     merged = _merge_and_dedupe(sources)
     assert len(merged) == 1
@@ -111,7 +117,7 @@ async def test_run_bucket_caches_and_skips_urlless_results(tmp_path: Path) -> No
     before = len(parallel.search_calls)
     sources2 = await _run_bucket(
         expert="Test",
-        expert_description=None,
+        expert_description="the one",
         bucket=bucket,
         parallel=parallel,
         workspace=ws,
@@ -120,6 +126,17 @@ async def test_run_bucket_caches_and_skips_urlless_results(tmp_path: Path) -> No
     assert [s.url for s in sources2] == [s.url for s in sources]
     assert len(parallel.search_calls) == before  # no new call
 
+    # Identity context is part of the cache fingerprint.
+    await _run_bucket(
+        expert="Test",
+        expert_description="a different person",
+        bucket=bucket,
+        parallel=parallel,
+        workspace=ws,
+        refresh=False,
+    )
+    assert len(parallel.search_calls) == before + 1
+
 
 @pytest.mark.asyncio
 async def test_run_bucket_refresh_ignores_cache(tmp_path: Path) -> None:
@@ -127,7 +144,7 @@ async def test_run_bucket_refresh_ignores_cache(tmp_path: Path) -> None:
     parallel = FakeParallelClient(default_search=make_search_result([]))
     ws = tmp_path / "discovery"
     ws.mkdir()
-    (ws / "talks.json").write_text("[{\"id\": \"fake\"}]", encoding="utf-8")  # bogus cache
+    (ws / "talks.json").write_text('[{"id": "fake"}]', encoding="utf-8")  # bogus cache
     # refresh=True forces a new call and overwrites the cache.
     sources = await _run_bucket(
         expert="E",
@@ -141,6 +158,110 @@ async def test_run_bucket_refresh_ignores_cache(tmp_path: Path) -> None:
     assert parallel.search_calls  # search was called
 
 
+@pytest.mark.asyncio
+async def test_run_bucket_skips_unsafe_urls(tmp_path: Path) -> None:
+    bucket = BUCKETS[0]
+    parallel = FakeParallelClient(
+        default_search=make_search_result(
+            [
+                {"url": "http://127.0.0.1/private", "title": "unsafe"},
+                {"url": "https://example.com/public", "title": "safe"},
+            ]
+        )
+    )
+    workspace = tmp_path / "discovery"
+    workspace.mkdir()
+
+    sources = await _run_bucket(
+        expert="Expert",
+        expert_description=None,
+        bucket=bucket,
+        parallel=parallel,
+        workspace=workspace,
+        refresh=False,
+    )
+
+    assert [source.url for source in sources] == ["https://example.com/public"]
+
+
+@pytest.mark.asyncio
+async def test_run_bucket_recovers_from_invalid_envelope_payload(
+    tmp_path: Path,
+) -> None:
+    bucket = BUCKETS[0]
+    parallel = FakeParallelClient(
+        default_search=make_search_result(
+            [{"url": "https://example.com/public", "title": "safe"}]
+        )
+    )
+    workspace = tmp_path / "discovery"
+    workspace.mkdir()
+    await _run_bucket(
+        expert="Expert",
+        expert_description=None,
+        bucket=bucket,
+        parallel=parallel,
+        workspace=workspace,
+        refresh=False,
+    )
+    cache = workspace / "essays.json"
+    envelope = json.loads(cache.read_text(encoding="utf-8"))
+    envelope["data"] = [None]
+    cache.write_text(json.dumps(envelope), encoding="utf-8")
+
+    before = len(parallel.search_calls)
+    sources = await _run_bucket(
+        expert="Expert",
+        expert_description=None,
+        bucket=bucket,
+        parallel=parallel,
+        workspace=workspace,
+        refresh=False,
+    )
+    assert len(parallel.search_calls) == before + 1
+    assert len(sources) == 1
+
+
+@pytest.mark.asyncio
+async def test_run_bucket_filters_unsafe_cached_source(tmp_path: Path) -> None:
+    bucket = BUCKETS[0]
+    parallel = FakeParallelClient(
+        default_search=make_search_result(
+            [{"url": "https://example.com/public", "title": "safe"}]
+        )
+    )
+    workspace = tmp_path / "discovery"
+    workspace.mkdir()
+    await _run_bucket(
+        expert="Expert",
+        expert_description=None,
+        bucket=bucket,
+        parallel=parallel,
+        workspace=workspace,
+        refresh=False,
+    )
+    cache = workspace / "essays.json"
+    envelope = json.loads(cache.read_text(encoding="utf-8"))
+    envelope["data"] = [
+        Source(
+            id="unsafe",
+            url="http://127.0.0.1/private",
+            bucket="essays",
+        ).model_dump()
+    ]
+    cache.write_text(json.dumps(envelope), encoding="utf-8")
+
+    sources = await _run_bucket(
+        expert="Expert",
+        expert_description=None,
+        bucket=bucket,
+        parallel=parallel,
+        workspace=workspace,
+        refresh=False,
+    )
+    assert sources == []
+
+
 # ---------------------------------------------------------------------------
 # _rank_and_trim
 # ---------------------------------------------------------------------------
@@ -150,7 +271,9 @@ async def test_run_bucket_refresh_ignores_cache(tmp_path: Path) -> None:
 async def test_rank_and_trim_skips_llm_when_already_under_target() -> None:
     sources = [Source(id="a", url="https://x.com/1", bucket="essays")]
     llm = FakeLLMClient()
-    out = await _rank_and_trim(expert="E", expert_description=None, sources=sources, target=5, llm=llm)
+    out = await _rank_and_trim(
+        expert="E", expert_description=None, sources=sources, target=5, llm=llm
+    )
     assert out == sources
     assert llm.structured_calls == []
 
@@ -173,7 +296,9 @@ async def test_rank_and_trim_applies_scores_and_trims() -> None:
     )
     llm = FakeLLMClient()
     llm.queue_structured(RankedSources, ranked)
-    out = await _rank_and_trim(expert="E", expert_description=None, sources=sources, target=4, llm=llm)
+    out = await _rank_and_trim(
+        expert="E", expert_description=None, sources=sources, target=4, llm=llm
+    )
     # First two are the LLM's ranked picks.
     assert [s.id for s in out[:2]] == ["src_005", "src_000"]
     assert out[0].canonicity_score == 0.9
@@ -200,7 +325,9 @@ async def test_rank_and_trim_breaks_when_llm_returns_exact_target() -> None:
     )
     llm = FakeLLMClient()
     llm.queue_structured(RankedSources, ranked)
-    out = await _rank_and_trim(expert="E", expert_description=None, sources=sources, target=2, llm=llm)
+    out = await _rank_and_trim(
+        expert="E", expert_description=None, sources=sources, target=2, llm=llm
+    )
     assert [s.id for s in out] == ["src_000", "src_001"]
 
 
@@ -216,7 +343,9 @@ async def test_rank_and_trim_tops_up_when_llm_underreturns() -> None:
     )
     llm = FakeLLMClient()
     llm.queue_structured(RankedSources, ranked)
-    out = await _rank_and_trim(expert="E", expert_description=None, sources=sources, target=3, llm=llm)
+    out = await _rank_and_trim(
+        expert="E", expert_description=None, sources=sources, target=3, llm=llm
+    )
     assert len(out) == 3
     assert out[0].id == "src_002"
 
@@ -267,9 +396,7 @@ async def test_discover_sources_full_path(settings: Settings) -> None:
         "frameworks": make_search_result(
             [{"url": "https://a.com/frameworks", "title": "Frameworks"}]
         ),
-        "books": make_search_result(
-            [{"url": "https://a.com/book", "title": "Book"}]
-        ),
+        "books": make_search_result([{"url": "https://a.com/book", "title": "Book"}]),
         "papers": make_search_result(
             [{"url": "https://arxiv.org/abs/1234.5678", "title": "A Paper"}]
         ),
@@ -290,38 +417,119 @@ async def test_discover_sources_full_path(settings: Settings) -> None:
     assert len(sources) == 6
     # Every non-empty bucket contributed, including the new ones.
     buckets_seen = {s.bucket for s in sources}
-    assert {"essays", "talks", "interviews", "frameworks", "books", "papers"} <= buckets_seen
+    assert {
+        "essays",
+        "talks",
+        "interviews",
+        "frameworks",
+        "books",
+        "papers",
+    } <= buckets_seen
     # One source should carry the new paper kind.
     assert any(s.kind == "paper" for s in sources)
     # Cache file was created.
-    ranked_path = (
-        settings.workspace_dir
-        / "discovery"
-        / f"ranked_sources.{settings.model_cache_id}.json"
-    )
+    ranked_path = settings.workspace_dir / "discovery" / "ranked_sources.json"
     assert ranked_path.exists()
 
 
 @pytest.mark.asyncio
 async def test_discover_sources_uses_cached_ranking(settings: Settings) -> None:
     from mimeo.config import ensure_dirs
-    ensure_dirs(settings)
-    cache_path = (
-        settings.workspace_dir
-        / "discovery"
-        / f"ranked_sources.{settings.model_cache_id}.json"
-    )
-    cache_payload = [
-        Source(id="src_000", url="https://cached", title="Cached", bucket="essays").model_dump()
-    ]
-    cache_path.write_text(json.dumps(cache_payload), encoding="utf-8")
 
-    parallel = FakeParallelClient()  # if called, tests would fail since no results queued
+    ensure_dirs(settings)
+    parallel = FakeParallelClient(
+        default_search=make_search_result(
+            [
+                {
+                    "url": "https://cached.example/article",
+                    "title": "Cached",
+                    "excerpts": ["cached"],
+                }
+            ]
+        )
+    )
     llm = FakeLLMClient()
+    first = await discover_sources(settings=settings, parallel=parallel, llm=llm)
+    assert len(first) == 1
+    parallel.search_calls.clear()
+
     sources = await discover_sources(settings=settings, parallel=parallel, llm=llm)
     assert len(sources) == 1
-    assert sources[0].url == "https://cached"
+    assert sources[0].url == "https://cached.example/article"
     assert parallel.search_calls == []  # cache short-circuits
+
+
+@pytest.mark.asyncio
+async def test_discover_sources_recovers_from_invalid_ranked_payload(
+    settings: Settings,
+) -> None:
+    from mimeo.config import ensure_dirs
+
+    ensure_dirs(settings)
+    parallel = FakeParallelClient(
+        default_search=make_search_result(
+            [{"url": "https://example.com/article", "title": "Article"}]
+        )
+    )
+    await discover_sources(settings=settings, parallel=parallel, llm=FakeLLMClient())
+    cache = settings.workspace_dir / "discovery" / "ranked_sources.json"
+    envelope = json.loads(cache.read_text(encoding="utf-8"))
+    envelope["data"] = [None]
+    cache.write_text(json.dumps(envelope), encoding="utf-8")
+
+    sources = await discover_sources(
+        settings=settings,
+        parallel=parallel,
+        llm=FakeLLMClient(),
+    )
+    assert len(sources) == 1
+
+
+@pytest.mark.asyncio
+async def test_ranked_cache_misses_when_max_sources_changes(
+    settings: Settings,
+) -> None:
+    from dataclasses import replace
+
+    from mimeo.config import ensure_dirs
+
+    initial = replace(settings, max_sources=len(BUCKETS))
+    ensure_dirs(initial)
+    by_bucket = {
+        bucket.name: make_search_result(
+            [{"url": f"https://example.com/{bucket.name}", "title": bucket.name}]
+        )
+        for bucket in BUCKETS
+    }
+    parallel = FakeParallelClient(search_by_bucket=by_bucket)
+    await discover_sources(
+        settings=initial,
+        parallel=parallel,
+        llm=FakeLLMClient(),
+    )
+
+    reduced = replace(initial, max_sources=1)
+    llm = FakeLLMClient()
+    llm.queue_structured(
+        RankedSources,
+        RankedSources(
+            sources=[
+                Source(
+                    id="src_000",
+                    url="https://example.com/essays",
+                    bucket="essays",
+                )
+            ]
+        ),
+    )
+    sources = await discover_sources(
+        settings=reduced,
+        parallel=parallel,
+        llm=llm,
+    )
+
+    assert len(sources) == 1
+    assert len(llm.structured_calls) == 1
 
 
 @pytest.mark.asyncio
@@ -330,6 +538,7 @@ async def test_discover_sources_tolerates_bucket_failures(
 ) -> None:
     """A bucket raising should not fail the whole discovery."""
     from mimeo.config import ensure_dirs
+
     ensure_dirs(settings)
 
     class _PartiallyBroken(FakeParallelClient):

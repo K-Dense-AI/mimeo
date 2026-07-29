@@ -14,10 +14,11 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 
+from .cache import fingerprint, load_cache, prompt_digest, schema_digest, store_cache
 from .config import Settings
 from .llm import LLMClient, load_prompt, render_prompt
+from .prompt_safety import wrap_untrusted_block
 from .schemas import (
     AgentsOutput,
     ClusteredCorpus,
@@ -33,8 +34,8 @@ logger = logging.getLogger(__name__)
 # this, we batch rather than truncate. Chosen to leave generous headroom for
 # the schema hint + system prompt on most current models.
 _CLUSTER_BATCH_CHARS = 60_000
-# Bound on batch count. If we'd need more than this we fall back to
-# proportional subsampling instead of dragging the run out.
+# Bound on batch count. If we'd need more than this we sample batches evenly
+# across the whole corpus instead of favoring the head.
 _MAX_CLUSTER_BATCHES = 8
 
 
@@ -44,16 +45,19 @@ async def cluster_corpus(
     settings: Settings,
     llm: LLMClient,
 ) -> ClusteredCorpus:
-    cache_path = settings.workspace_dir / f"clustered_corpus.{settings.model_cache_id}.json"
-    if cache_path.exists() and not settings.refresh:
+    cache_path = settings.workspace_dir / "clustered_corpus.json"
+    cache_fingerprint = cluster_cache_fingerprint(extractions, settings)
+    if not settings.refresh:
         try:
-            return ClusteredCorpus.model_validate_json(cache_path.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001
+            cached = load_cache(cache_path, cache_fingerprint)
+            if cached is not None:
+                return ClusteredCorpus.model_validate(cached)
+        except Exception:  # noqa: BLE001 - validation failure is a safe miss
             logger.warning("Corrupt cluster cache; re-clustering")
 
     if not extractions:
         empty = ClusteredCorpus(expert_name=settings.expert_name)
-        cache_path.write_text(empty.model_dump_json(indent=2), encoding="utf-8")
+        store_cache(cache_path, cache_fingerprint, empty)
         return empty
 
     batches = _split_extractions_for_cluster(extractions)
@@ -69,15 +73,37 @@ async def cluster_corpus(
         )
         partials: list[ClusteredCorpus] = []
         for idx, batch in enumerate(batches):
-            logger.info("Cluster batch %d/%d (%d extractions)", idx + 1, len(batches), len(batch))
+            logger.info(
+                "Cluster batch %d/%d (%d extractions)",
+                idx + 1,
+                len(batches),
+                len(batch),
+            )
             partials.append(
                 await _cluster_batch(extractions=batch, settings=settings, llm=llm)
             )
         corpus = _merge_corpora(partials, expert_name=settings.expert_name)
 
     corpus = corpus.model_copy(update={"expert_name": settings.expert_name})
-    cache_path.write_text(corpus.model_dump_json(indent=2), encoding="utf-8")
+    store_cache(cache_path, cache_fingerprint, corpus)
     return corpus
+
+
+def cluster_cache_fingerprint(
+    extractions: list[Extraction],
+    settings: Settings,
+) -> str:
+    """Return the fingerprint used by the clustered-corpus cache."""
+    return fingerprint(
+        "cluster",
+        code=2,
+        expert=settings.expert_name,
+        expert_description=settings.expert_description,
+        model=settings.model,
+        prompt=prompt_digest("cluster"),
+        schema=schema_digest(ClusteredCorpus),
+        extractions=extractions,
+    )
 
 
 async def _cluster_batch(
@@ -95,7 +121,10 @@ async def _cluster_batch(
         template,
         expert=settings.expert_name,
         expert_context=settings.expert_context,
-        extractions_json=_maybe_truncate(extractions_json, _CLUSTER_BATCH_CHARS),
+        extractions_json=wrap_untrusted_block(
+            "extractions_json",
+            _maybe_truncate(extractions_json, _CLUSTER_BATCH_CHARS),
+        ),
     )
     system = (
         "You are a meticulous research synthesist. You merge many noisy "
@@ -140,13 +169,29 @@ def _split_extractions_for_cluster(
         batches.append(current)
 
     if len(batches) > _MAX_CLUSTER_BATCHES:
+        total_batches = len(batches)
+        selected_indices = {
+            round(index * (total_batches - 1) / (_MAX_CLUSTER_BATCHES - 1))
+            for index in range(_MAX_CLUSTER_BATCHES)
+        }
+        selected = [
+            batch for index, batch in enumerate(batches) if index in selected_indices
+        ]
+        kept_ids = {extraction.source_id for batch in selected for extraction in batch}
+        dropped_ids = [
+            extraction.source_id
+            for extraction in extractions
+            if extraction.source_id not in kept_ids
+        ]
         logger.warning(
-            "Would split into %d batches; collapsing to %d by dropping the "
-            "tail. Consider reducing --max-sources.",
-            len(batches),
-            _MAX_CLUSTER_BATCHES,
+            "Would split into %d batches; sampling %d evenly across the corpus "
+            "(omitted %d extraction(s): %s). Consider reducing --max-sources.",
+            total_batches,
+            len(selected),
+            len(dropped_ids),
+            ", ".join(dropped_ids),
         )
-        batches = batches[:_MAX_CLUSTER_BATCHES]
+        batches = selected
     return batches
 
 
@@ -256,11 +301,23 @@ async def author_skill(
     notes, the cache is bypassed (revisions are transient — the refine loop
     owns persistence), and the model is told to improve the prior draft.
     """
-    cache_path = settings.workspace_dir / f"skill_output.{settings.model_cache_id}.json"
-    if feedback is None and cache_path.exists() and not settings.refresh:
+    cache_path = settings.workspace_dir / "skill_output.json"
+    cache_fingerprint = fingerprint(
+        "author-skill",
+        code=2,
+        expert=settings.expert_name,
+        expert_description=settings.expert_description,
+        model=settings.model,
+        prompt=prompt_digest("synthesize_skill"),
+        schema=schema_digest(SkillOutput),
+        corpus=corpus,
+    )
+    if feedback is None and not settings.refresh:
         try:
-            return SkillOutput.model_validate_json(cache_path.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001
+            cached = load_cache(cache_path, cache_fingerprint)
+            if cached is not None:
+                return SkillOutput.model_validate(cached)
+        except Exception:  # noqa: BLE001 - validation failure is a safe miss
             logger.warning("Corrupt skill-output cache; re-authoring")
 
     template = load_prompt("synthesize_skill")
@@ -269,7 +326,10 @@ async def author_skill(
         template,
         expert=settings.expert_name,
         expert_context=settings.expert_context,
-        corpus_json=_maybe_truncate(corpus_json, 80_000),
+        corpus_json=wrap_untrusted_block(
+            "clustered_corpus",
+            _maybe_truncate(corpus_json, 80_000),
+        ),
     )
 
     system = (
@@ -298,7 +358,7 @@ async def author_skill(
         max_tokens=16_000,
     )
     if feedback is None:
-        cache_path.write_text(output.model_dump_json(indent=2), encoding="utf-8")
+        store_cache(cache_path, cache_fingerprint, output)
     return output
 
 
@@ -316,11 +376,23 @@ async def author_agents(
     revision pass: the critique is appended as editorial notes and the cache
     is bypassed.
     """
-    cache_path = settings.workspace_dir / f"agents_output.{settings.model_cache_id}.json"
-    if feedback is None and cache_path.exists() and not settings.refresh:
+    cache_path = settings.workspace_dir / "agents_output.json"
+    cache_fingerprint = fingerprint(
+        "author-agents",
+        code=2,
+        expert=settings.expert_name,
+        expert_description=settings.expert_description,
+        model=settings.model,
+        prompt=prompt_digest("synthesize_agents"),
+        schema=schema_digest(AgentsOutput),
+        corpus=corpus,
+    )
+    if feedback is None and not settings.refresh:
         try:
-            return AgentsOutput.model_validate_json(cache_path.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001
+            cached = load_cache(cache_path, cache_fingerprint)
+            if cached is not None:
+                return AgentsOutput.model_validate(cached)
+        except Exception:  # noqa: BLE001 - validation failure is a safe miss
             logger.warning("Corrupt agents-output cache; re-authoring")
 
     template = load_prompt("synthesize_agents")
@@ -329,7 +401,10 @@ async def author_agents(
         template,
         expert=settings.expert_name,
         expert_context=settings.expert_context,
-        corpus_json=_maybe_truncate(corpus_json, 80_000),
+        corpus_json=wrap_untrusted_block(
+            "clustered_corpus",
+            _maybe_truncate(corpus_json, 80_000),
+        ),
     )
 
     system = (
@@ -359,7 +434,7 @@ async def author_agents(
         max_tokens=16_000,
     )
     if feedback is None:
-        cache_path.write_text(output.model_dump_json(indent=2), encoding="utf-8")
+        store_cache(cache_path, cache_fingerprint, output)
     return output
 
 
@@ -415,5 +490,8 @@ def _revision_addendum(
         prev_score=str(report.overall_score),
         quality_bar=str(quality_bar),
         issues=_format_issues(report),
-        previous_artifact=_maybe_truncate(previous_artifact, _REVISION_PREVIOUS_BUDGET),
+        previous_artifact=wrap_untrusted_block(
+            "previous_artifact",
+            _maybe_truncate(previous_artifact, _REVISION_PREVIOUS_BUDGET),
+        ),
     )

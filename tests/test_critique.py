@@ -9,9 +9,9 @@ import pytest
 from mimeo.config import Settings, ensure_dirs
 from mimeo.critique import (
     _render_markdown,
-    _render_skill_artifact,
     critique_agents,
     critique_skill,
+    render_skill_artifact,
 )
 from mimeo.schemas import CritiqueIssue, CritiqueReport
 
@@ -106,7 +106,7 @@ async def test_critique_skill_suppresses_report_when_asked(tmp_path: Path) -> No
 
 
 def test_render_skill_artifact_includes_references() -> None:
-    artifact = _render_skill_artifact(sample_skill_output())
+    artifact = render_skill_artifact(sample_skill_output())
     assert "references/principles.md" in artifact
     assert "references/heuristics.md" in artifact
     assert "references/anti-patterns.md" in artifact
@@ -164,7 +164,7 @@ def test_render_skill_artifact_without_heuristics_or_anti_patterns() -> None:
         heuristics_md="",
         anti_patterns_md="   ",
     )
-    artifact = _render_skill_artifact(bare)
+    artifact = render_skill_artifact(bare)
     assert "references/heuristics.md" not in artifact
     assert "references/anti-patterns.md" not in artifact
 
@@ -172,7 +172,7 @@ def test_render_skill_artifact_without_heuristics_or_anti_patterns() -> None:
 @pytest.mark.asyncio
 async def test_critique_skill_truncates_oversize_inputs(tmp_path: Path) -> None:
     """Artifact/corpus over the per-prompt budget is truncated, not dropped."""
-    from mimeo.schemas import ClusteredCorpus, ClusteredItem, Principle, SkillOutput
+    from mimeo.schemas import ClusteredCorpus, ClusteredItem, SkillOutput
 
     settings = Settings(expert_name="E", output_dir=tmp_path)
     ensure_dirs(settings)
@@ -200,9 +200,7 @@ async def test_critique_skill_truncates_oversize_inputs(tmp_path: Path) -> None:
     )
     llm = FakeLLMClient()
     llm.queue_structured(CritiqueReport, _report())
-    await critique_skill(
-        output=output, corpus=big_corpus, settings=settings, llm=llm
-    )
+    await critique_skill(output=output, corpus=big_corpus, settings=settings, llm=llm)
     # The prompt we handed to the LLM contains the truncation marker.
     _schema, user, _system = llm.structured_calls[0]
     assert "[truncated for length]" in user

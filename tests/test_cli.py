@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 
 import pytest
@@ -13,7 +12,6 @@ from mimeo.cli import app, main
 from mimeo.config import MissingCredentialError, Settings
 from mimeo.identity import AmbiguousNameError
 from mimeo.schemas import ExpertCandidate
-
 
 runner = CliRunner()
 
@@ -137,9 +135,7 @@ def test_cli_build_missing_credentials_exits_2(
         captured=captured,
         raise_=MissingCredentialError("PARALLEL_API_KEY not set"),
     )
-    result = runner.invoke(
-        app, ["Someone", "--output-dir", str(tmp_path)]
-    )
+    result = runner.invoke(app, ["Someone", "--output-dir", str(tmp_path)])
     assert result.exit_code == 2
     assert "Missing credential" in result.stdout
 
@@ -148,12 +144,8 @@ def test_cli_build_pipeline_failure_exits_1(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     captured: dict = {}
-    _patch_run_pipeline(
-        monkeypatch, captured=captured, raise_=RuntimeError("boom")
-    )
-    result = runner.invoke(
-        app, ["Someone", "--output-dir", str(tmp_path)]
-    )
+    _patch_run_pipeline(monkeypatch, captured=captured, raise_=RuntimeError("boom"))
+    result = runner.invoke(app, ["Someone", "--output-dir", str(tmp_path)])
     assert result.exit_code == 1
     assert "Pipeline failed" in result.stdout
 
@@ -217,9 +209,7 @@ def test_cli_build_keyboard_interrupt_exits_130(
 ) -> None:
     captured: dict = {}
     _patch_run_pipeline(monkeypatch, captured=captured, raise_=KeyboardInterrupt())
-    result = runner.invoke(
-        app, ["Someone", "--output-dir", str(tmp_path)]
-    )
+    result = runner.invoke(app, ["Someone", "--output-dir", str(tmp_path)])
     assert result.exit_code == 130
     assert "Cancelled" in result.stdout
 
