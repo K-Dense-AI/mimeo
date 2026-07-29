@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
 import re
 import sys
@@ -146,6 +147,26 @@ def _load_expert(skill_dir: Path) -> Expert | None:
     """
     slug = skill_dir.name
 
+    run_summary = skill_dir / "_workspace" / "run_summary.json"
+    if run_summary.is_file():
+        try:
+            expert_data = json.loads(run_summary.read_text(encoding="utf-8"))["expert"]
+            name = expert_data["name"]
+            description = expert_data.get("description") or ""
+        except (KeyError, TypeError, json.JSONDecodeError):
+            pass
+        else:
+            if isinstance(name, str) and name.strip():
+                return Expert(
+                    slug=slug,
+                    name=name.strip(),
+                    disambiguator=description.strip()
+                    if isinstance(description, str)
+                    else "",
+                    skill_dir=skill_dir,
+                    source="run_summary.json",
+                )
+
     agents = skill_dir / "AGENTS.md"
     if agents.is_file():
         text = agents.read_text(encoding="utf-8")
@@ -165,6 +186,15 @@ def _load_expert(skill_dir: Path) -> Expert | None:
     skill = skill_dir / "SKILL.md"
     if skill.is_file():
         text = skill.read_text(encoding="utf-8")
+        heading = _H1_RE.search(text)
+        if heading:
+            return Expert(
+                slug=slug,
+                name=heading.group(1).strip(),
+                disambiguator="",
+                skill_dir=skill_dir,
+                source="SKILL.md",
+            )
         m = _SKILL_DESC_RE.search(text)
         if m:
             description = m.group(1).strip()
@@ -261,7 +291,11 @@ async def _one(
         f"{expert.name}{disambig_preview} [dim]via {expert.source}[/dim]"
     )
     try:
-        path = await generate_avatar(settings=settings, client=client)
+        path = await generate_avatar(
+            settings=settings,
+            client=client,
+            destination_dir=expert.skill_dir,
+        )
     except Exception as exc:  # noqa: BLE001 - best-effort, log and continue
         console.print(f"[red]fail[/red] {expert.slug}: {exc}")
         return expert.slug, f"error: {exc}"

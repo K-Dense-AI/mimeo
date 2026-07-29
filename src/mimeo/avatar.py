@@ -1,10 +1,8 @@
 """Generate an illustrative avatar portrait for an expert via OpenRouter.
 
-OpenRouter exposes image-capable models (e.g. ``openai/gpt-5.4-image-2``)
-through the same ``/chat/completions`` endpoint, opted into with
-``modalities: ["image", "text"]``. The generated image comes back as a
-base64-encoded data URL inside ``choices[0].message.images[i].image_url.url``,
-which we decode straight to ``avatar.<ext>`` in the skill directory.
+OpenRouter exposes image-capable models through ``POST /api/v1/images``.
+Generated images are returned as base64 data in ``data[].b64_json`` and are
+decoded straight to ``avatar.<ext>`` in the skill directory.
 
 The feature is strictly optional: any failure here is logged and swallowed
 so a flaky image endpoint never breaks the main pipeline.
@@ -70,14 +68,30 @@ def _extract_image(body: dict[str, Any]) -> tuple[bytes, str] | None:
     Returns ``(bytes, extension)`` on success, or ``None`` if the response
     carried no image payload.
     """
+    images = body.get("data") or []
+    for entry in images:
+        if not isinstance(entry, dict):
+            continue
+        encoded = entry.get("b64_json")
+        if isinstance(encoded, str):
+            media_type = entry.get("media_type")
+            ext = (
+                media_type.removeprefix("image/")
+                if isinstance(media_type, str)
+                else "png"
+            )
+            decoded = _decode_image(encoded, ext)
+            if decoded is not None:
+                return decoded
+
+    # Compatibility with the older chat-completions image response shape.
     try:
         message = body["choices"][0]["message"]
     except (KeyError, IndexError, TypeError):
         return None
     if not isinstance(message, dict):
         return None
-    images = message.get("images") or []
-    for entry in images:
+    for entry in message.get("images") or []:
         if not isinstance(entry, dict):
             continue
         url = (entry.get("image_url") or {}).get("url")
@@ -85,24 +99,30 @@ def _extract_image(body: dict[str, Any]) -> tuple[bytes, str] | None:
             continue
         match = _DATA_URL_RE.match(url)
         if match:
-            ext = _ALLOWED_IMAGE_TYPES.get(match.group("ext").lower())
-            encoded = match.group("b64")
-            if ext is None or len(encoded) > _MAX_AVATAR_B64_CHARS:
-                continue
-            try:
-                image_bytes = base64.b64decode(encoded, validate=True)
-            except (ValueError, TypeError, binascii.Error):
-                continue
-            if len(image_bytes) > _MAX_AVATAR_BYTES:
-                continue
-            return image_bytes, ext
+            decoded = _decode_image(match.group("b64"), match.group("ext"))
+            if decoded is not None:
+                return decoded
     return None
+
+
+def _decode_image(encoded: str, image_type: str) -> tuple[bytes, str] | None:
+    ext = _ALLOWED_IMAGE_TYPES.get(image_type.lower())
+    if ext is None or len(encoded) > _MAX_AVATAR_B64_CHARS:
+        return None
+    try:
+        image_bytes = base64.b64decode(encoded, validate=True)
+    except (ValueError, TypeError, binascii.Error):
+        return None
+    if len(image_bytes) > _MAX_AVATAR_BYTES:
+        return None
+    return image_bytes, ext
 
 
 async def generate_avatar(
     *,
     settings: Settings,
     client: httpx.AsyncClient | None = None,
+    destination_dir: Path | None = None,
 ) -> Path | None:
     """Generate the expert avatar and write it to ``<skill>/avatar.<ext>``.
 
@@ -118,15 +138,18 @@ async def generate_avatar(
     }
     payload: dict[str, Any] = {
         "model": settings.avatar_model,
-        "messages": [{"role": "user", "content": prompt}],
-        "modalities": ["image", "text"],
+        "prompt": prompt,
+        "n": 1,
+        "resolution": "1K",
+        "aspect_ratio": "1:1",
+        "output_format": "png",
     }
 
     owns_client = client is None
-    c = client or httpx.AsyncClient(timeout=httpx.Timeout(180.0, connect=30.0))
+    c = client or httpx.AsyncClient(timeout=httpx.Timeout(300.0, connect=30.0))
     try:
         resp = await c.post(
-            f"{OPENROUTER_BASE_URL}/chat/completions",
+            f"{OPENROUTER_BASE_URL}/images",
             headers=headers,
             json=payload,
         )
@@ -145,8 +168,9 @@ async def generate_avatar(
         return None
 
     image_bytes, ext = extracted
-    settings.skill_dir.mkdir(parents=True, exist_ok=True)
-    avatar_path = settings.skill_dir / f"avatar.{ext}"
+    target_dir = destination_dir or settings.skill_dir
+    target_dir.mkdir(parents=True, exist_ok=True)
+    avatar_path = target_dir / f"avatar.{ext}"
     avatar_path.write_bytes(image_bytes)
     logger.info("Avatar written to %s (%d bytes).", avatar_path, len(image_bytes))
     return avatar_path

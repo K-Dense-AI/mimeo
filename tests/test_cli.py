@@ -56,7 +56,7 @@ def test_cli_build_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     assert settings.deep_research is False
     assert settings.refresh is False
     assert settings.concurrency == 5
-    assert settings.generate_avatar is True
+    assert settings.generate_avatar is False
     assert settings.refine is True
     assert settings.max_revisions == 2
     assert settings.quality_bar == 8

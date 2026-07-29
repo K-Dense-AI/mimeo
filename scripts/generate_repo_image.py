@@ -1,6 +1,6 @@
 """Generate an image that explains this repo via OpenRouter.
 
-Uses openai/gpt-5.4-image-2 through OpenRouter's chat-completions API.
+Uses openai/gpt-image-1 through OpenRouter's Images API.
 Requires OPENROUTER_API_KEY in the environment (or .env at repo root).
 
 Usage:
@@ -20,8 +20,8 @@ import httpx
 from dotenv import load_dotenv
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-MODEL = "openai/gpt-5.4-image-2"
-ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
+MODEL = "openai/gpt-image-1"
+ENDPOINT = "https://openrouter.ai/api/v1/images"
 
 PROMPT = """Create a clean, modern, WIDE LANDSCAPE (16:9) infographic that explains the "mimeo" repo.
 Use the full width of the canvas — a horizontal left-to-right pipeline, not a square grid.
@@ -77,12 +77,11 @@ def main() -> int:
 
     payload = {
         "model": args.model,
-        "modalities": ["image", "text"],
-        "messages": [{"role": "user", "content": PROMPT}],
-        "image_config": {
-            "aspect_ratio": args.aspect_ratio,
-            "image_size": args.image_size,
-        },
+        "prompt": PROMPT,
+        "aspect_ratio": args.aspect_ratio,
+        "resolution": args.image_size,
+        "output_format": "png",
+        "n": 1,
     }
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -98,28 +97,19 @@ def main() -> int:
         data = resp.json()
 
     try:
-        message = data["choices"][0]["message"]
-        images = message.get("images") or []
+        images = data["data"]
         if not images:
             print("error: no images returned. full response:", file=sys.stderr)
             print(data, file=sys.stderr)
             return 2
-        url = images[0]["image_url"]["url"]
+        b64 = images[0]["b64_json"]
     except (KeyError, IndexError, TypeError) as exc:
         print(f"error: unexpected response shape: {exc}", file=sys.stderr)
         print(data, file=sys.stderr)
         return 2
 
-    # OpenRouter returns either a data: URL with base64 or a hosted URL.
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    if url.startswith("data:"):
-        b64 = url.split(",", 1)[1]
-        args.out.write_bytes(base64.b64decode(b64))
-    else:
-        with httpx.Client(timeout=120.0) as client:
-            img = client.get(url)
-            img.raise_for_status()
-            args.out.write_bytes(img.content)
+    args.out.write_bytes(base64.b64decode(b64, validate=True))
 
     print(f"✓ wrote {args.out.relative_to(REPO_ROOT)}")
     return 0

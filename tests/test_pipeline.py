@@ -108,12 +108,7 @@ def _build_llm(
 
 @pytest.fixture(autouse=True)
 def _stub_avatar(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Default every pipeline test to a no-op avatar.
-
-    Avatar generation is on by default in production but hits a real image
-    endpoint. Tests that specifically exercise the avatar path override this
-    with their own monkeypatch.
-    """
+    """Keep avatar calls offline in tests that explicitly enable the feature."""
 
     async def _noop(*, settings: Settings, client: Any = None) -> None:
         return None

@@ -182,12 +182,11 @@ def build(
         typer.Option(
             "--avatar/--no-avatar",
             help=(
-                "Generate a painterly avatar portrait of the expert and "
-                "save it alongside the other outputs as avatar.<ext>. On "
-                "by default; pass --no-avatar to skip the extra image call."
+                "Opt in to a generated painterly portrait of the expert, "
+                "saved alongside the other outputs as avatar.<ext>."
             ),
         ),
-    ] = True,
+    ] = False,
     avatar_model: Annotated[
         str,
         typer.Option(

@@ -45,6 +45,18 @@ def _response(
     )
 
 
+def _image_response(
+    *,
+    data: list[dict[str, Any]] | None = None,
+    status: int = 200,
+) -> httpx.Response:
+    return httpx.Response(
+        status,
+        json={"data": data or []},
+        request=httpx.Request("POST", "https://openrouter.ai/api/v1/images"),
+    )
+
+
 def _client_returning(response: httpx.Response) -> httpx.AsyncClient:
     """Build an ``httpx.AsyncClient`` whose transport always returns ``response``."""
 
@@ -106,6 +118,34 @@ def test_extract_image_happy_path_png() -> None:
     image_bytes, ext = out
     assert image_bytes == _TINY_PNG
     assert ext == "png"
+
+
+def test_extract_image_reads_images_api_response() -> None:
+    body = {
+        "data": [
+            {
+                "b64_json": _TINY_PNG_B64,
+                "media_type": "image/png",
+            }
+        ]
+    }
+    assert _extract_image(body) == (_TINY_PNG, "png")
+
+
+def test_extract_image_defaults_missing_media_type_to_png() -> None:
+    body = {"data": [{"b64_json": _TINY_PNG_B64}]}
+    assert _extract_image(body) == (_TINY_PNG, "png")
+
+
+def test_extract_image_skips_invalid_images_api_entries() -> None:
+    body = {
+        "data": [
+            "not-an-object",
+            {"b64_json": 42},
+            {"b64_json": _TINY_PNG_B64, "media_type": "image/svg+xml"},
+        ]
+    }
+    assert _extract_image(body) is None
 
 
 def test_extract_image_normalizes_jpeg_extension() -> None:
@@ -235,14 +275,30 @@ def test_extract_image_rejects_oversized_payload(
 @pytest.mark.asyncio
 async def test_generate_avatar_writes_file(tmp_path: Path) -> None:
     s = _settings(tmp_path)
-    response = _response(
-        images=[{"image_url": {"url": f"data:image/png;base64,{_TINY_PNG_B64}"}}]
+    response = _image_response(
+        data=[{"b64_json": _TINY_PNG_B64, "media_type": "image/png"}]
     )
     async with _client_returning(response) as client:
         path = await generate_avatar(settings=s, client=client)
     assert path is not None
     assert path == s.skill_dir / "avatar.png"
     assert path.read_bytes() == _TINY_PNG
+
+
+@pytest.mark.asyncio
+async def test_generate_avatar_honors_destination_override(tmp_path: Path) -> None:
+    s = _settings(tmp_path / "generated")
+    destination = tmp_path / "exact-skill-dir"
+    response = _image_response(
+        data=[{"b64_json": _TINY_PNG_B64, "media_type": "image/png"}]
+    )
+    async with _client_returning(response) as client:
+        path = await generate_avatar(
+            settings=s,
+            client=client,
+            destination_dir=destination,
+        )
+    assert path == destination / "avatar.png"
 
 
 @pytest.mark.asyncio
@@ -260,7 +316,7 @@ async def test_generate_avatar_uses_webp_extension(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_generate_avatar_returns_none_when_no_image(tmp_path: Path) -> None:
     s = _settings(tmp_path)
-    response = _response(images=[])
+    response = _image_response(data=[])
     async with _client_returning(response) as client:
         path = await generate_avatar(settings=s, client=client)
     assert path is None
@@ -273,7 +329,7 @@ async def test_generate_avatar_raises_on_http_error(tmp_path: Path) -> None:
     response = httpx.Response(
         500,
         json={"error": "internal"},
-        request=httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions"),
+        request=httpx.Request("POST", "https://openrouter.ai/api/v1/images"),
     )
     async with _client_returning(response) as client:
         with pytest.raises(httpx.HTTPStatusError):
@@ -285,7 +341,7 @@ async def test_generate_avatar_posts_expected_payload(tmp_path: Path) -> None:
     s = _settings(
         tmp_path,
         expert_description="mathematician",
-        avatar_model="openai/gpt-5.4-image-2",
+        avatar_model="openai/gpt-image-1",
     )
     seen: dict[str, Any] = {}
 
@@ -295,21 +351,23 @@ async def test_generate_avatar_posts_expected_payload(tmp_path: Path) -> None:
         seen["url"] = str(request.url)
         seen["headers"] = dict(request.headers)
         seen["json"] = _json.loads(request.content.decode("utf-8"))
-        return _response(
-            images=[{"image_url": {"url": f"data:image/png;base64,{_TINY_PNG_B64}"}}]
+        return _image_response(
+            data=[{"b64_json": _TINY_PNG_B64, "media_type": "image/png"}]
         )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         await generate_avatar(settings=s, client=client)
 
-    assert seen["url"].endswith("/chat/completions")
+    assert seen["url"].endswith("/images")
     assert seen["headers"].get("authorization", "").startswith("Bearer ")
     body = seen["json"]
-    assert body["model"] == "openai/gpt-5.4-image-2"
-    assert body["modalities"] == ["image", "text"]
-    assert body["messages"][0]["role"] == "user"
-    assert "Ada Lovelace" in body["messages"][0]["content"]
-    assert "mathematician" in body["messages"][0]["content"]
+    assert body["model"] == "openai/gpt-image-1"
+    assert body["n"] == 1
+    assert body["resolution"] == "1K"
+    assert body["aspect_ratio"] == "1:1"
+    assert body["output_format"] == "png"
+    assert "Ada Lovelace" in body["prompt"]
+    assert "mathematician" in body["prompt"]
 
 
 @pytest.mark.asyncio
@@ -324,10 +382,8 @@ async def test_generate_avatar_constructs_client_when_omitted(
             self.closed = False
 
         async def post(self, *args: Any, **kwargs: Any) -> httpx.Response:
-            return _response(
-                images=[
-                    {"image_url": {"url": f"data:image/png;base64,{_TINY_PNG_B64}"}}
-                ]
+            return _image_response(
+                data=[{"b64_json": _TINY_PNG_B64, "media_type": "image/png"}]
             )
 
         async def aclose(self) -> None:

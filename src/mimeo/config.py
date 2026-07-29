@@ -21,7 +21,7 @@ Mode = Literal["text", "captions", "full"]
 Format = Literal["skill", "agents", "both"]
 
 DEFAULT_MODEL = os.environ.get("MIMEO_MODEL", "google/gemini-3.6-flash")
-DEFAULT_AVATAR_MODEL = os.environ.get("MIMEO_AVATAR_MODEL", "openai/gpt-image-2")
+DEFAULT_AVATAR_MODEL = os.environ.get("MIMEO_AVATAR_MODEL", "openai/gpt-image-1")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
@@ -60,11 +60,10 @@ class Settings:
     refine: bool = True
     max_revisions: int = 2
     quality_bar: int = 8
-    # Painterly portrait of the expert saved as ``avatar.<ext>`` in the
-    # skill directory. Generated via an OpenRouter image model; failures
-    # are logged and swallowed so a flaky image endpoint never breaks the
-    # main pipeline. On by default; disable with ``--no-avatar``.
-    generate_avatar: bool = True
+    # Optional painterly portrait of the expert saved as ``avatar.<ext>`` in
+    # the skill directory. Disabled by default because generated likenesses
+    # can be inaccurate; opt in explicitly with ``--avatar``.
+    generate_avatar: bool = False
     avatar_model: str = DEFAULT_AVATAR_MODEL
 
     def __post_init__(self) -> None:
