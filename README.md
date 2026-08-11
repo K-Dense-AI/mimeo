@@ -216,13 +216,3 @@ Operational helpers are tracked under `scripts/`:
 Generated deliverables under `output/` are intentionally committed as the
 project gallery. Their `_workspace/` caches and logs remain local and ignored.
 
-## Star History
-
-<a href="https://www.star-history.com/?repos=K-Dense-AI%2Fmimeo">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=K-Dense-AI/mimeo&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=K-Dense-AI/mimeo&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=K-Dense-AI/mimeo&type=date&legend=top-left" />
- </picture>
-</a>
-
