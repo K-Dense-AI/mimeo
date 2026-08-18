@@ -8,6 +8,8 @@
 
 > **Stay up to date:** Follow K-Dense on [X](https://x.com/k_dense_ai), [LinkedIn](https://www.linkedin.com/company/k-dense-inc), and [YouTube](https://www.youtube.com/@K-Dense-Inc) for mimeo updates, release announcements, walkthroughs, and examples of expert skills you can generate for your coding agent.
 
+> 🎬 **New to agent skills?** [Skills 101: Build Your Own Scientific Agent Skill](https://youtu.be/lVZbHiwzMEg) walks through the `SKILL.md` anatomy that mimeo generates.
+
 **Clone an expert's way of thinking into your coding agent.**
 
 ![mimeo pipeline](docs/mimeo-explainer.png)
