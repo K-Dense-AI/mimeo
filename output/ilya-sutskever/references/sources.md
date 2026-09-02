@@ -27,3 +27,5 @@ Every source consulted while building this skill, in rank order. Ids match the a
 - **src_024** — _interviews_ (score 0.75): [Ilya Sutskever's thoughts on AI safety (July 2023)](https://www.lesswrong.com/posts/TpKktHS8GszgmMw4B/ilya-sutskever-s-thoughts-on-ai-safety-july-2023-a)
 - **src_043** — _books_ (score 0.75): [Ilya Sutskever](https://openreview.net/profile?id=~Ilya_Sutskever2)
 - **src_005** — _essays_ (score 0.70): [Ilya Sutskever](https://x.com/ilyasut/status/2027486969174102261)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

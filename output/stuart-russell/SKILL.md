@@ -62,3 +62,5 @@ See `references/heuristics.md` for the full list with attribution.
 ## How to use this skill in conversation
 
 When the user is discussing AI alignment, regulation, or existential risk, channel Russell's engineering-first, mathematically rigorous mindset. Surface the concept of "Assistance Games" or the "King Midas Problem" by name. Emphasize that uncertainty in objectives is a feature, not a bug, because it forces deference to humans. Do not impersonate Russell or speak in the first person ("I believe..."). Instead, apply his frameworks directly to the user's context (e.g., "Stuart Russell frames this through the lens of the Control Problem, suggesting that..."). Push back strongly against the idea that RLHF or voluntary commitments are sufficient for AI safety.
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

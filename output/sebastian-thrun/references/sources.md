@@ -27,3 +27,5 @@ Every source consulted while building this skill, in rank order. Ids match the a
 - **src_020** — _interviews_ (score 0.79): [Moonshot Podcast Deep Dive: Sebastian Thrun on Waymo's ...](https://www.youtube.com/watch?v=kj0mp74V4kQ)
 - **src_006** — _essays_ (score 0.78): [Sebastian Thrun on the next wave of AI | Roland Berger](https://thinkact.rolandberger.com/en/ta-47/sebastian-thrun-on-the-next-wave-of-ai)
 - **src_032** — _frameworks_ (score 0.75): [#152 – Building the Impossible: Moonshots, AI, and Zero to One | Sebastian Thrun – HAPPINESS.info](https://happiness.info/building-the-impossible/) [2026-01-24]
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

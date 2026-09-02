@@ -31,3 +31,5 @@ Futures in Biotech: Dr. Linda Griffith on Tissue Engineering
 - **src_009** — _talks_ (score 0.63): [Women's Health (WHx) Program Seminar Series | Talk 2: Linda Griffith](https://www.youtube.com/watch?v=cmtF0INJHE0)
 - **src_012** — _talks_ (score 0.62): [AI and organoids - Linda G Griffith, PhD](https://www.youtube.com/watch?v=N5Bka-MSwbQ)
 - **src_039** — _papers_ (score 0.60): [Systems biology framework for rational design of operational conditions for in vitro / in vivo translation of microphysiological systems | bioRxiv](https://www.biorxiv.org/content/10.1101/2025.01.17.633624v1) [2025-01-01]
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

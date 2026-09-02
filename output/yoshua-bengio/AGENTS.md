@@ -130,3 +130,5 @@ Grounded in the following 25 sources by or about Yoshua Bengio. Ids match the `(
 - **src_023** — _interviews_ (score 0.85): [Godfather of AI: The next 5 years Will Change Humanity Forever | Yoshua Bengio - YouTube](https://www.youtube.com/watch?v=0fXGtQoJgNo) [2026-02-16]
 - **src_034** — _frameworks_ (score 0.84): [Yoshua Bengio](https://awards.acm.org/award_winners/bengio_3406375)
 - **src_000** — _essays_ (score 0.82): [Yoshua Bengio: Home](https://yoshuabengio.org/en)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

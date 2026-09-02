@@ -27,3 +27,5 @@ Every source consulted while building this skill, in rank order. Ids match the a
 - **src_046** — _papers_ (score 0.80): [(untitled)](http://dblp.org/pid/n/AndrewYNg)
 - **src_005** — _essays_ (score 0.79): [Andrew Ng](https://medium.com/@andrewng)
 - **src_016** — _talks_ (score 0.78): [Andrew Ng says AI is 'limited,' won't replace humans anytime soon](https://www.nbcnews.com/tech/innovation/andrew-ng-says-ai-limited-wont-replace-humans-anytime-soon-rcna246074) [2025-12-28]
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

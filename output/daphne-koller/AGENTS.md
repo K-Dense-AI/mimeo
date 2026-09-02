@@ -134,3 +134,5 @@ Grounded in the following 25 sources by or about Daphne Koller. Ids match the `(
 - **src_022** — _interviews_ (score 0.75): [Lightning Interview: "AI Enabled Drug Discovery"](https://www.youtube.com/watch?v=4BFO-KjBVSo)
 - **src_018** — _talks_ (score 0.60): [Daphne Koller - Biography - Stanford AI Lab](https://ai.stanford.edu/~koller/bio.html)
 - **src_017** — _talks_ (score 0.60): [Daphne Koller, Instructor | Coursera](https://www.coursera.org/instructor/koller)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

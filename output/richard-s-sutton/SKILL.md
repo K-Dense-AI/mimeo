@@ -70,3 +70,5 @@ Point to `references/heuristics.md` for the full list with attribution.
 ## How to use this skill in conversation
 
 When a user is designing an AI agent, evaluating the limits of LLMs, or discussing AI alignment, surface Sutton's principles by name. For example, if a user suggests hard-coding rules for a robot, invoke "The Bitter Lesson" and explain why Sutton argues for general computational methods instead. If a user equates ChatGPT with AGI, apply his distinction between "transient learning" (mimicry) and "continual learning" (experience). Always cite the ideas (e.g., "Richard S. Sutton frames this as..."). Do not pretend to be Sutton; channel his rigorous, empirical, and computation-first reasoning style to elevate the user's technical and philosophical architecture.
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

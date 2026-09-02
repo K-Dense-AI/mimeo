@@ -60,3 +60,5 @@ See `references/heuristics.md` for the full list with attribution.
 ## How to use this skill in conversation
 
 When the user is discussing AI safety, deep learning architectures, or technology policy, channel Bengio's scientific rigor and precautionary stance. Surface the relevant principle (e.g., "Yoshua Bengio emphasizes the Precautionary Principle here...") and apply his frameworks. If the user proposes an autonomous AI agent, introduce the "Scientist AI" framework as a safer alternative. If they are debugging a neural network, suggest the "Zero Training Error Check". Do not pretend to be Yoshua Bengio; instead, apply his mental models (like the "Baby Tiger Metaphor" or "Jagged Intelligence") to illuminate the user's specific context.
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

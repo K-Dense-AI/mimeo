@@ -27,3 +27,5 @@ Every source consulted while building this skill, in rank order. Ids match the a
 - **src_023** — _interviews_ (score 0.76): [Andrej Karpathy on AutoResearch and Code Claws](https://www.youtube.com/watch?v=2qjnVpEb6Cw)
 - **src_052** — _papers_ (score 0.70): [Andrej Karpathy: The 100 Most Influential People in AI 2024 - TIME](https://time.com/collections/time100-ai-2024/7012851/andrej-karpathy)
 - **src_042** — _books_ (score 0.65): [Andrej Karpathy](https://en.wikipedia.org/wiki/Andrej_Karpathy)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

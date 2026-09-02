@@ -2,6 +2,7 @@
 name = "mimeo"
 version = "0.1.1"
 description = "Turn an expert's body of work into a ready-to-use Agent Skill (SKILL.md + references) via Parallel + OpenRouter."
+authors = [{ name = "Timothy Kassis" }]
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -24,6 +25,12 @@ full = [
     "yt-dlp>=2024.12.13",
     "faster-whisper>=1.1.0",
 ]
+
+[project.urls]
+Homepage = "https://www.k-dense.ai"
+Repository = "https://github.com/K-Dense-AI/mimeo"
+Issues = "https://github.com/K-Dense-AI/mimeo/issues"
+Paper = "https://arxiv.org/abs/2609.00453"
 
 [project.scripts]
 mimeo = "mimeo.cli:app"

@@ -27,3 +27,5 @@ Every source consulted while building this skill, in rank order. Ids match the a
 - **src_033** — _podcasts_ (score 0.65): [Jeff Dean - from Gemini 3 Deep Think distilling to Flash - YouTube](https://www.youtube.com/watch?v=F_1oDPWxpFQ)
 - **src_020** — _interviews_ (score 0.60): [Jeff Dean Facts](https://gist.github.com/lkyuchukov/05962852e9239f0c2f0ccbd69e818d58)
 - **src_009** — _essays_ (score 0.55): [Jeff Dean (@JeffDean) / Posts / X](https://x.com/JeffDean)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

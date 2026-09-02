@@ -139,3 +139,5 @@ Grounded in the following 25 sources by or about Ian Goodfellow. Ids match the `
 - **src_005** — _essays_ (score 0.55): [Ian Goodfellow GAN inventor - YouTube](https://www.youtube.com/watch?v=E-4EcrQbNwA)
 - **src_014** — _talks_ (score 0.50): [Ian Goodfellow - Wikipedia](https://en.wikipedia.org/wiki/Ian_Goodfellow)
 - **src_000** — _essays_ (score 0.45): [Ian Goodfellow: Machine Learning Wunderkind - History of Data Science](https://www.historyofdatascience.com/ian-goodfellow-machine-learning-wunderkind/) [2021-12-03]
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

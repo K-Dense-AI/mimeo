@@ -27,3 +27,5 @@ Every source consulted while building this skill, in rank order. Ids match the a
 - **src_004** — _essays_ (score 0.75): [Christopher Manning and Ph.D. Students' Dissertations](https://nlp.stanford.edu/~manning/dissertations/)
 - **src_041** — _books_ (score 0.74): [(untitled)](http://hotpotqa.github.io/)
 - **src_035** — _books_ (score 0.70): [Christopher Manning (Author of Foundations of Statistical Natural Language Processing)](https://www.goodreads.com/author/show/3374477.Christopher_Manning)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

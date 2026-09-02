@@ -80,3 +80,5 @@ When assisting with bioengineering, mechanobiology, or diagnostic design problem
 - **Focus on dynamic functional metrics over static images**: Direct users to measure flow velocity, occlusion pressure, or contractile frequency rather than relying purely on vessel counts or histological staining.
 - **Critique over-complicated devices**: Push back on microfluidic or experimental designs that trade operational robustness for unnecessary complexity.
 - **Cite Dixon's models directly**: Refer explicitly to Dixon's concepts (e.g., "J. Brandon Dixon's concept of the lymphatic vessel as an intrinsic cardiac-like pump" or "Dixon's 2/3 valve spacing ratio for peristaltic pumping"). Do not impersonate him—apply his principles with analytical rigor.
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

@@ -1,0 +1,43 @@
+# Citation metadata for mimeo. GitHub renders this as "Cite this repository";
+# Zenodo reads it when archiving a release. Validate with:
+#     uvx cffconvert --validate
+cff-version: 1.2.0
+message: >-
+  If you use mimeo in your work, please cite the paper listed under
+  preferred-citation. Cite the software entry below as well when you need a
+  reference for the code itself.
+type: software
+title: mimeo
+abstract: >-
+  Compile a named expert's public work (essays, talks, interviews, papers,
+  letters) into a source-verified Agent Skill (SKILL.md + references) or
+  AGENTS.md that a coding agent can load.
+authors:
+  - family-names: Kassis
+    given-names: Timothy
+    affiliation: K-Dense
+version: 0.1.1
+license: MIT
+repository-code: https://github.com/K-Dense-AI/mimeo
+url: https://www.k-dense.ai
+keywords:
+  - agent-skills
+  - agents-md
+  - coding-agents
+  - llm-agents
+  - expert-knowledge
+preferred-citation:
+  type: article
+  title: "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers"
+  authors:
+    - family-names: Kassis
+      given-names: Timothy
+      affiliation: K-Dense
+  year: 2026
+  journal: arXiv
+  doi: 10.48550/arXiv.2609.00453
+  url: https://arxiv.org/abs/2609.00453
+  identifiers:
+    - type: other
+      value: "arXiv:2609.00453"
+      description: arXiv identifier

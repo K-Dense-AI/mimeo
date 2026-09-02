@@ -140,3 +140,5 @@ Grounded in the following 25 sources by or about Judea Pearl. Ids match the `(sr
 - **src_046** — _papers_ (score 0.75): [[2505.17133] Learning Probabilities of Causation from Finite Population Data](https://arxiv.org/abs/2505.17133)
 - **src_025** — _podcasts_ (score 0.70): [Judea Pearl - Wikipedia](https://en.wikipedia.org/wiki/Judea_Pearl) [2026-03-03]
 - **src_032** — _frameworks_ (score 0.70): [Judea Pearl: Causality](https://www.jstor.org/stable/24199253)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

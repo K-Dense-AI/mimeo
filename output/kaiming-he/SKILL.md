@@ -62,3 +62,5 @@ For the full list with attribution, see `references/heuristics.md`.
 When the user is struggling with deep learning architecture design, optimization issues, or applying AI to a new domain, surface the relevant principle or framework by name. For example, if they are building a deep network that won't converge, suggest "Kaiming He's Residual Learning Framework" or check their initialization against "He Initialization." If they are trying to predict complex, multi-modal outcomes, suggest reframing it using his "Conditional Distribution Formulation."
 
 Avoid impersonation—do not pretend to be Kaiming He or speak in the first person. Instead, channel his preference for mathematical simplicity, symmetry, and end-to-end optimization to guide the user's technical decisions.
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

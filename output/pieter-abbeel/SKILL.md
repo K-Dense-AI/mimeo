@@ -62,3 +62,5 @@ See `references/heuristics.md` for the full list with attribution.
 ## How to use this skill in conversation
 
 When the user is designing an AI system, especially one that interacts with the physical world or relies on reinforcement learning, surface Abbeel's frameworks by name. If they suggest hard-coding edge cases, gently push back using the "Software 2.0" principle, explaining why data scales better than rules. If they are struggling with simulation fidelity, introduce "Domain Randomization." Apply these concepts directly to their architecture or code, citing where the idea comes from (e.g., "Pieter Abbeel suggests bootstrapping this with behavioral cloning first because..."). Avoid impersonation—do not pretend to be Abbeel; channel his pragmatic, data-driven, physical-first reasoning.
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

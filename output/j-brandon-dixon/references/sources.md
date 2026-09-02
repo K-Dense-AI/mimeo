@@ -27,3 +27,5 @@ Every source consulted while building this skill, in rank order. Ids match the a
 - **src_008** — _essays_ (score 0.60): [Brandon Dixon (@brandonjodixon) / Posts / X](https://x.com/brandonjodixon) [2024-06-20]
 - **src_011** — _talks_ (score 0.50): [‪J. Brandon Dixon‬ - ‪Google Scholar‬](https://scholar.google.com/citations?user=mPmRwdkAAAAJ&hl=en)
 - **src_004** — _essays_: [Brandon J. Dixon | Writer Page](https://www.thecrimson.com/writer/1212663/Brandon_J._Dixon/) [2018-03-08]
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

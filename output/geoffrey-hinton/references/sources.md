@@ -27,3 +27,5 @@ Every source consulted while building this skill, in rank order. Ids match the a
 - **src_031** — _podcasts_ (score 0.76): [Geoffrey Hinton - 30 with Guyon Espiner](https://open.spotify.com/episode/5br4TGUswBHASUa9Y2xZ8u)
 - **src_008** — _essays_ (score 0.75): [Geoffrey Hinton on the Past, Present, and Future of AI](https://www.lesswrong.com/posts/zJz8KXSRsproArXq5/geoffrey-hinton-on-the-past-present-and-future-of-ai)
 - **src_047** — _papers_ (score 0.74): [Transcript of Nobel Prize lecture: Geoffrey Hinton, Nobel Prize in Physics 2024 – The Singju Post](https://singjupost.com/transcript-of-nobel-prize-lecture-geoffrey-hinton-nobel-prize-in-physics-2024) [2025-03-19]
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

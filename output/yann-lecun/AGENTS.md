@@ -138,3 +138,5 @@ Grounded in the following 25 sources by or about Yann LeCun. Ids match the `(src
 - **src_062** — _papers_ (score 0.90): [[bib2web] Yann LeCun's Publications](http://yann.lecun.com/exdb/publis)
 - **src_051** — _books_ (score 0.90): [  Yann LeCun · SlidesLive
 ](https://slideslive.com/s/yann-lecun-23521)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

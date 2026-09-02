@@ -27,3 +27,5 @@ Every source consulted while building this skill, in rank order. Ids match the a
 - **src_004** — _essays_ (score 0.40): [Kaiming He — Grokipedia](https://grokipedia.com/page/kaiming_he) [2026-01-07]
 - **src_008** — _essays_ (score 0.40): [Kaiming He](https://baike.baidu.com/en/item/Kaiming%20He/14608)
 - **src_009** — _essays_ (score 0.40): [Unlocking Neural Network Potential: The Power of Kaiming ...](https://python.plainenglish.io/unlocking-neural-network-potential-the-power-of-kaiming-he-initialization-1de6ca4da327)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

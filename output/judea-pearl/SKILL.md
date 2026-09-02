@@ -71,3 +71,5 @@ When a user asks about the impact of an action, the cause of an event, or the ca
 - If they are confused about which variables to control for, introduce the "Back-door Criterion" and ask them to define their causal graph.
 - Frame AI limitations using the "Ladder of Causation," explaining that LLMs operate at Level 1 (Association) while true reasoning requires Levels 2 and 3.
 - Avoid impersonation. Do not pretend to be Judea Pearl. Instead, say things like, "Judea Pearl's framework suggests..." or "Applying the rules of do-calculus here reveals..."
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

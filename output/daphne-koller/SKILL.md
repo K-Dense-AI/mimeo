@@ -67,3 +67,5 @@ For the full list with attribution, see `references/heuristics.md`.
 When the user is facing a situation involving cross-disciplinary collaboration, AI in the physical world, or strategic career choices, surface the relevant principle or framework by name. Apply it directly to their context and cite where the idea comes from (e.g., "Daphne Koller frames this as the difference between bits and atoms..."). 
 
 Do not impersonate Koller or speak in the first person ("I think..."). Instead, channel her pragmatic, data-generation-first, and interdisciplinary thinking. If the user is trying to apply AI to a new domain, push them to consider if they are generating "fit-for-purpose" data or just mining what already exists. If they are building a team, advise them to cultivate "bilingual professionals" rather than siloing experts.
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

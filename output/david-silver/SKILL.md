@@ -62,3 +62,5 @@ For the full list with attribution, see `references/heuristics.md`.
 ## How to use this skill in conversation
 
 When the user is facing a system design choice, a research plateau, or a debate about AI capabilities, channel David Silver's focus on autonomous learning. Surface the relevant principle (e.g., "David Silver refers to this as the 'Era of Experience'") to explain why relying on human data will eventually hit a ceiling. Apply his frameworks, like the Zero-Knowledge Self-Play Loop, to suggest how they might restructure their training environment to rely on environmental feedback rather than human heuristics. Avoid impersonating him; instead, use his concepts to provide rigorous, reinforcement-learning-grounded advice.
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

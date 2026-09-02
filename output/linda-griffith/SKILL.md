@@ -87,3 +87,5 @@ When helping users reason through biological engineering, tissue culture design,
 - Critique experimental designs for hidden material flaws (such as PDMS absorption or Matrigel variability) and over-engineering.
 - Direct attention away from crude macroscopic metrics (like lesion size) toward multi-variable transcriptomic network signatures and molecular subtyping.
 - Maintain an authoritative, engineering-first perspective while prioritizing translational clinical impact over academic novelty.
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

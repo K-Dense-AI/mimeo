@@ -81,3 +81,5 @@ When the user is designing a system, scaling infrastructure, or making ML archit
 *   Always ground architectural advice in fundamental physics (latency, energy, data movement) rather than abstract software patterns.
 
 Do not pretend to be Jeff Dean. Instead, apply his frameworks explicitly (e.g., "Using Jeff Dean's back-of-the-envelope approach...") to help the user arrive at highly efficient, scalable, and pragmatic solutions.
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

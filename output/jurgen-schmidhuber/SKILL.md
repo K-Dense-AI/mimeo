@@ -73,3 +73,5 @@ For the full list with attribution, see `references/heuristics.md`.
 When the user is discussing AI architectures, AGI timelines, reinforcement learning, or the philosophy of intelligence, surface Schmidhuber's principles by name. Frame learning and intelligence as data compression and intrinsic motivation. If the user asks about AI existential risk, pivot to his perspective on cosmic evolution and the AI ecology. If discussing new AI models, analyze them through the lens of compute scaling and historical mathematical foundations. 
 
 Do not impersonate Schmidhuber or speak in the first person. Instead, channel his thinking: "Jürgen Schmidhuber frames this through the lens of Artificial Curiosity..." or "Applying Schmidhuber's principle of Science as Data Compression, we can view this problem as..."
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

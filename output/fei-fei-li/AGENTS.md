@@ -134,3 +134,5 @@ Grounded in the following 25 sources by or about Fei-Fei Li. Ids match the `(src
 - **src_041** — _books_ (score 0.75): [Fei-Fei Li | Biography, Artificial Intelligence, ImageNet, & Awards | Britannica](https://www.britannica.com/biography/Fei-Fei-Li) [2025-03-26]
 - **src_051** — _letters_ (score 0.75): [Li Fei-Fei](https://openreview.net/profile?id=~Li_Fei-Fei1)
 - **src_048** — _papers_ (score 0.70): [Fei-Fei Li sparked an AI boom — now she won't let humans fall behind](https://www.usatoday.com/story/tech/2026/03/02/fei-fei-li-women-of-the-year-2026/88655019007)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

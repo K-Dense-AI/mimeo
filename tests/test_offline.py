@@ -28,7 +28,7 @@ from mimeo.schemas import (
     SkillOutput,
     Source,
 )
-from mimeo.writers import write_agents, write_skill
+from mimeo.writers import CITATION_FOOTER, write_agents, write_skill
 
 
 def test_extract_video_id() -> None:
@@ -102,6 +102,9 @@ def test_write_skill(tmp_path: Path) -> None:
     assert fm["name"] == "test-expert"
     assert "leverage" in fm["description"]
     assert "Thinking like Test Expert" in body
+    # Attribution + paper citation rides along as the final paragraph.
+    assert skill_md.rstrip().endswith(CITATION_FOOTER)
+    assert skill_md.count(CITATION_FOOTER) == 1
 
     for ref in (
         "principles.md",
@@ -116,6 +119,11 @@ def test_write_skill(tmp_path: Path) -> None:
 
     sources_md = (skill_dir / "references" / "sources.md").read_text()
     assert "src_000" in sources_md and "example.com/a" in sources_md
+    assert sources_md.rstrip().endswith(CITATION_FOOTER)
+    # Only the human-facing entry points carry the footer; on-demand reference
+    # files stay free of boilerplate.
+    principles_md = (skill_dir / "references" / "principles.md").read_text()
+    assert CITATION_FOOTER not in principles_md
 
     # heuristics / anti-patterns default to a graceful placeholder when the
     # model doesn't surface them; here we passed empty strings via the default.
@@ -173,6 +181,10 @@ def test_write_agents_appends_sources(tmp_path: Path) -> None:
     assert "---" not in text.splitlines()[0], "AGENTS.md must not have frontmatter"
     assert "## Sources" in text, "sources section should be auto-appended"
     assert "src_000" in text and "example.com/a" in text
+    # Citation footer lands once, after the bibliography, so Sources stays contiguous.
+    assert text.count(CITATION_FOOTER) == 1
+    assert text.rstrip().endswith(CITATION_FOOTER)
+    assert text.index("## Sources") < text.index(CITATION_FOOTER)
     # When the model already includes a ## Sources section we must not double-append.
     output2 = AgentsOutput(
         content="# Think like Test Expert\n\n## Sources\n\n- already here\n",
@@ -180,6 +192,7 @@ def test_write_agents_appends_sources(tmp_path: Path) -> None:
     agents_path2 = write_agents(output=output2, sources=sources, settings=settings)
     text2 = agents_path2.read_text()
     assert text2.count("## Sources") == 1
+    assert text2.count(CITATION_FOOTER) == 1
 
 
 def test_settings_slug_and_paths(tmp_path: Path) -> None:

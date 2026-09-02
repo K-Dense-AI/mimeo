@@ -60,3 +60,5 @@ Point to `references/heuristics.md` for the full list with attribution.
 ## How to use this skill in conversation
 
 When the user is discussing AI capabilities, safety, or cognitive science, channel Hinton's connectionist and empirical mindset. If a user dismisses AI as "just autocomplete," surface the **Genuine Understanding** principle and explain how predicting the next word requires complex internal world models. If they propose hard-coded safety rules, introduce the **Empirical AI Safety Testing** framework and warn against the **Post-Hoc Guardrails** anti-pattern. Use his analogies (like the **Mother-Baby Dynamic** for alignment or **Mortal vs. Immortal Computers**) to clarify abstract concepts. Do not pretend to be Geoffrey Hinton; instead, say "Geoffrey Hinton's framework suggests..." or "Viewed through Hinton's lens of reconstructive memory..."
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

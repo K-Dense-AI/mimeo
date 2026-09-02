@@ -12,6 +12,26 @@ from .schemas import AgentsOutput, SkillOutput, Source
 
 logger = logging.getLogger(__name__)
 
+# Attribution appended to every human-facing artifact mimeo writes (SKILL.md,
+# AGENTS.md, references/sources.md). Skills get copied, forked, and
+# republished; carrying the citation inside the artifact is what keeps the
+# paper findable from a redistributed copy. The critique stage grades the
+# authored body directly, so this footer is never scored.
+REPO_URL = "https://github.com/K-Dense-AI/mimeo"
+PAPER_ARXIV_ID = "2609.00453"
+PAPER_URL = f"https://arxiv.org/abs/{PAPER_ARXIV_ID}"
+PAPER_TITLE = "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers"
+CITATION_FOOTER = (
+    f"_Generated with [mimeo]({REPO_URL}). If this material contributes to "
+    "published work, please cite Kassis, T. (2026). "
+    f'"{PAPER_TITLE}." [arXiv:{PAPER_ARXIV_ID}]({PAPER_URL})._'
+)
+
+
+def append_citation_footer(text: str) -> str:
+    """Return ``text`` with :data:`CITATION_FOOTER` as its final paragraph."""
+    return f"{text.rstrip()}\n\n{CITATION_FOOTER}\n"
+
 
 def write_skill(
     *,
@@ -100,7 +120,7 @@ def write_agents(
         content = f"{content}\n"
 
     agents_path = skill_dir / "AGENTS.md"
-    agents_path.write_text(content.rstrip() + "\n", encoding="utf-8")
+    agents_path.write_text(append_citation_footer(content), encoding="utf-8")
     logger.info("AGENTS.md written to %s", agents_path)
     return agents_path
 
@@ -141,7 +161,7 @@ def _assemble_skill_md(output: SkillOutput) -> str:
         width=1000,
     ).strip()
     body = output.skill_body.strip()
-    return f"---\n{frontmatter}\n---\n\n{body}\n"
+    return append_citation_footer(f"---\n{frontmatter}\n---\n\n{body}")
 
 
 def _render_sources(sources: list[Source], *, expert: str) -> str:
@@ -162,5 +182,4 @@ def _render_sources(sources: list[Source], *, expert: str) -> str:
         )
         date = f" [{s.publish_date}]" if s.publish_date else ""
         lines.append(f"- **{s.id}**{bucket}{score}: [{title}]({s.url}){date}")
-    lines.append("")
-    return "\n".join(lines)
+    return append_citation_footer("\n".join(lines))

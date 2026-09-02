@@ -27,3 +27,5 @@ Every source consulted while building this skill, in rank order. Ids match the a
 - **src_014** — _talks_ (score 0.77): [Google's Demis Hassabis, Anthropic's Dario Amodei ...](https://www.youtube.com/watch?v=02YLwsCKUww) [2026-01-20]
 - **src_043** — _books_ (score 0.76): [The Infinity Machine: Demis Hassabis, DeepMind, and ...](https://www.amazon.com/Infinity-Machine-Hassabis-DeepMind-Superintelligence/dp/0593831845)
 - **src_051** — _papers_ (score 0.75): [(untitled)](http://semafor.com/article/01/21/2026/google-deepminds-demis-hassabis-and-the-paradox-of-ai-progress)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

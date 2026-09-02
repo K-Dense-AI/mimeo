@@ -27,3 +27,5 @@ Every source consulted while building this skill, in rank order. Ids match the a
 - **src_008** — _essays_ (score 0.76): [Pieter Abbeel - Amazon](https://www.linkedin.com/in/pieterabbeel) [2021-11-29]
 - **src_022** — _podcasts_ (score 0.75): [Second episode of The Robot Brains podcast is live now! I ...](https://x.com/pabbeel/status/1376932526355148803)
 - **src_024** — _podcasts_ (score 0.74): [Pieter Abbeel - UC Berkeley IEOR Department - Industrial Engineering & Operations Research](https://ieor.berkeley.edu/people/pieter-abbeel) [2019-03-20]
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

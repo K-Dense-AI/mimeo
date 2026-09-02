@@ -144,3 +144,5 @@ Facial Attractiveness - Low-complexity Art - Lego Art
 - **src_018** — _interviews_ (score 0.82): [Interview with Juergen Schmidhuber, renowned 'Father Of ...](https://www.reddit.com/r/MachineLearning/comments/13q6k4a/interview_with_juergen_schmidhuber_renowned/)
 - **src_014** — _talks_ (score 0.80): [Juergen Schmidhuber](https://www.youtube.com/user/juergenschmidhuber)
 - **src_017** — _talks_ (score 0.80): [V.O. What can Artificial Intelligence do for you? Jürgen ...](https://www.youtube.com/watch?v=PDjLPMAB8vs)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

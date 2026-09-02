@@ -27,3 +27,5 @@ Every source consulted while building this skill, in rank order. Ids match the a
 - **src_013** — _talks_ (score 0.75): [LLMs Don't Make Substantial Predictions – Richard Sutton - YouTube](https://www.youtube.com/watch?v=fLxxmt0sDjM)
 - **src_019** — _interviews_ (score 0.70): [Richard S. Sutton](https://en.wikipedia.org/wiki/Richard_S._Sutton) [2026-03-01]
 - **src_004** — _essays_ (score 0.65): [U of A professor wins Turing Prize for groundbreaking AI ...](https://edmontonjournal.com/news/local-news/u-of-a-professor-richard-sutton-wins-turing-prize) [2025-03-07]
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

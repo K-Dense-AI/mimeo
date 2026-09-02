@@ -129,3 +129,5 @@ Grounded in the following 25 sources by or about Stuart Russell. Ids match the `
 - **src_001** — _essays_ (score 0.76): [Books by Stuart Russell - Five Books Expert Recommendations](https://fivebooks.com/people/stuart-russell)
 - **src_059** — _letters_ (score 0.75): [Open letter on AI - Berkeley Engineering](https://engineering.berkeley.edu/news/2015/11/open-letter-on-ai/) [2023-11-15]
 - **src_020** — _interviews_ (score 0.70): [Stuart Russell: The 100 Most Influential People in AI 2025](https://time.com/collections/time100-ai-2025/7305869/stuart-russell) [2025-08-26]
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

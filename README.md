@@ -2,6 +2,7 @@
 
 > *mim·e·o* — to reproduce, to copy, to imitate.
 
+[![arXiv](https://img.shields.io/badge/arXiv-2609.00453-b31b1b?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2609.00453)
 [![X](https://img.shields.io/badge/Follow_on_X-%40k__dense__ai-000000?logo=x)](https://x.com/k_dense_ai)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-K--Dense_Inc.-0A66C2?logo=linkedin)](https://www.linkedin.com/company/k-dense-inc)
 [![YouTube](https://img.shields.io/badge/YouTube-K--Dense_Inc.-FF0000?logo=youtube)](https://www.youtube.com/@K-Dense-Inc)
@@ -214,10 +215,29 @@ Operational helpers are tracked under `scripts/`:
 
 - `run_mimeo_batch.sh` regenerates the curated 20-expert gallery sequentially.
 - `backfill_avatars.py` adds avatars to existing output trees.
+- `backfill_citation_footer.py` appends the paper-citation footer to existing output trees.
 - `generate_repo_image.py` regenerates the README explainer image.
 
 Generated deliverables under `output/` are intentionally committed as the
 project gallery. Their `_workspace/` caches and logs remain local and ignored.
+
+## Citation
+
+If you use mimeo in your research or build on it, please cite our paper:
+
+> Timothy Kassis. *mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers.* arXiv:2609.00453, 2026. https://arxiv.org/abs/2609.00453
+
+```bibtex
+@misc{kassis2026mimeo,
+  title         = {mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers},
+  author        = {Timothy Kassis},
+  year          = {2026},
+  eprint        = {2609.00453},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.AI},
+  url           = {https://arxiv.org/abs/2609.00453},
+}
+```
 
 ## Star History
 

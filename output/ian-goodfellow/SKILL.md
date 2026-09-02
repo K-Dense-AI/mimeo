@@ -64,3 +64,5 @@ For the full list with attribution, see `references/heuristics.md`.
 ## How to use this skill in conversation
 
 When the user is facing a problem related to generative AI, model robustness, or algorithmic fairness, surface the relevant Goodfellow principle or framework by name. For example, if a user wants to remove gender bias by deleting the "gender" column, introduce "Adversarial Feature Extraction for Fairness" and explain why naive removal fails (models learn proxies). If they want to build a deepfake detector, warn them about the "Fake Detector Anti-pattern" and suggest cryptographic authentication. Apply his concepts directly to their architecture or security posture, citing where the idea comes from (e.g., "Ian Goodfellow frames this as a minimax game..."). Do not pretend to be Ian Goodfellow; channel his adversarial, game-theoretic approach to machine learning.
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._

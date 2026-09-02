@@ -145,3 +145,5 @@ Grounded in the following 25 sources by or about David Silver. Ids match the `(s
 - **src_021** — _interviews_ (score 0.70): [Exclusive: Google DeepMind researcher David Silver leaves to launch his own AI startup | Fortune](https://fortune.com/2026/01/30/google-deepmind-ai-researcher-david-silver-leaves-to-found-ai-startup-ineffable-intelligence) [2026-01-30]
 - **src_047** — _papers_ (score 0.68): [Ex-DeepMind's David Silver eyes $1B fundraise for Ineffable Intelligence — TFN](https://techfundingnews.com/ex-deepmind-ai-researcher-eyes-1b-fundraise-for-london-based-ineffable-intelligence) [2026-02-19]
 - **src_036** — _frameworks_ (score 0.65): [David Silver - Reinforcement learning (2015) - tomrochette.com](https://blog.tomrochette.com/machine-learning/courses/david-silver-reinforcement-learning/)
+
+_Generated with [mimeo](https://github.com/K-Dense-AI/mimeo). If this material contributes to published work, please cite Kassis, T. (2026). "mimeo: Compiling Public Expert Corpora into Agent Skills and Testing What Transfers." [arXiv:2609.00453](https://arxiv.org/abs/2609.00453)._
